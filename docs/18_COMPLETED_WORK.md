@@ -1043,3 +1043,48 @@ task list asks for that before the worker (T060+) actually needs it.
 Next: T050 --- Normalization pipeline (Stage 3 of the data pipeline —
 provider-agnostic, deterministic value transformations on top of
 T043's already-mapped output).
+
+### T050 --- Normalization pipeline
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/normalize.py` (new package): `FieldKind` (StrEnum:
+    TEXT/URL/NUMBER/TIMESTAMP/CATEGORY) + `normalize_record_data()` —
+    pure, total, provider-agnostic Stage 3 transformations, applied
+    after (and separate from) a provider's own field mapping (T043).
+-   Field kinds are declared by the caller, never guessed from a
+    value's shape — the only way to keep "never invent a default"
+    honest at the kind-detection level, not just the value level.
+    Undeclared keys default to `FieldKind.TEXT` (universally safe:
+    trim + NFC).
+-   Unicode: NFC only, never NFKC — NFC is lossless/canonical, NFKC
+    changes actual content (™→TM, fullwidth→ASCII digits). Every
+    per-kind transform falls back to text-only cleanup when a value
+    doesn't match its declared kind (non-numeric string under NUMBER,
+    unparseable/no-explicit-timezone TIMESTAMP, malformed URL) —
+    never coerced, never guessed.
+-   Wired into `app/providers/google_maps/mapper.py`'s
+    `map_place_to_record_draft()` immediately via a new `FIELD_KINDS`
+    constant, not left an orphaned, unused module. Existing T043
+    tests re-verified to still pass unchanged.
+-   **Found and worked around a real tool-level limitation** while
+    writing the Unicode NFC/NFKC test: two visually-identical accented
+    characters (one NFC, one NFD) typed as literal source text could
+    not be reliably distinguished/matched by the file-editing tooling.
+    Fixed by building both forms explicitly via `chr()` code points
+    instead of literal characters — worth remembering for any future
+    test needing an exact non-ASCII byte sequence.
+-   25 new tests, one section per T050 IMPLEMENT item, plus a
+    dedicated regression fixture
+    (`tests/fixtures/pipeline/normalize_regression.json`) covering
+    every kind in one realistic mixed record.
+-   Verified locally: 305 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (75 source files).
+
+**Phase 5 (Data pipeline) is now started.**
+
+Next: T051 --- Validation pipeline (field-level data quality system —
+valid/warning/rejected states, type/range/required-field/coordinate/
+URL validation, deterministic, no network calls).

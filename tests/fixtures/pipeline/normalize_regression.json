@@ -1,0 +1,37 @@
+{
+  "input": {
+    "name": "  Example   Cafe  ",
+    "website": "HTTPS://Example-Cafe.TEST/Menu",
+    "rating": "4.5",
+    "user_rating_count": 128,
+    "business_status": "OPERATIONAL",
+    "types": ["CAFE", "Food"],
+    "collected_at": "2026-08-20T09:00:00-03:00",
+    "phone_number": "+91 98765 43210",
+    "open_now": true,
+    "price": "$1,234.56"
+  },
+  "field_kinds": {
+    "name": "text",
+    "website": "url",
+    "rating": "number",
+    "user_rating_count": "number",
+    "business_status": "category",
+    "types": "category",
+    "collected_at": "timestamp",
+    "phone_number": "text",
+    "price": "number"
+  },
+  "expected_output": {
+    "name": "Example   Cafe",
+    "website": "https://example-cafe.test/Menu",
+    "rating": 4.5,
+    "user_rating_count": 128,
+    "business_status": "operational",
+    "types": ["cafe", "food"],
+    "collected_at": "2026-08-20T12:00:00Z",
+    "phone_number": "+91 98765 43210",
+    "open_now": true,
+    "price": "$1,234.56"
+  }
+}

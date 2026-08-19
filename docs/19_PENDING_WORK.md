@@ -86,7 +86,11 @@
         first concrete `ProviderAdapter`; found/fixed a real
         malformed-response gap in T042's client — see
         docs/16_MEMORY.md). **Phase 4 (Provider) fully complete.**
--   [ ] T050--T055 pipeline
+-   [x] T050 Normalization pipeline (`app/pipeline/normalize.py` —
+        provider-agnostic Stage 3 transformations, caller-declared
+        field kinds, NFC-only Unicode; wired into the Google mapper —
+        see docs/16_MEMORY.md)
+-   [ ] T051--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations

@@ -2,45 +2,36 @@
 
 ## Active task
 
-T050 --- Normalization pipeline.
+T051 --- Validation pipeline.
 
 ## Previous task
 
-T045 --- Provider contract tests. COMPLETE — `app/providers/
-google_maps/provider.py`: `GoogleMapsProvider`, the first concrete
-`ProviderAdapter` in the codebase, assembled purely by composition
-from T041-T044 (`estimate()`/`health_check()` written here, honestly
-scoped — no pre-call usage estimate exists on Google's side, and
-`health_check()` doesn't spend real quota on a live probe). **Found
-and fixed a real robustness gap in T042's client**: a malformed
-top-level response could have made `search_text()` iterate a string's
-characters instead of failing gracefully — hardened, matching T043's
-"never invent, never crash" principle applied consistently at the
-collection layer too. 15 new tests
-(`tests/unit/test_google_maps_provider_contract.py`), one per T045
-IMPLEMENT item, plus new fixtures under `tests/fixtures/google_maps/`.
-**Phase 4 (Provider) is now fully complete** — T040-T045 all done,
-every `ProviderAdapter` method has a real, tested Google
-implementation. T044 --- Provider error mapping, T043 --- Google
-response mapper, T042 --- Google client, T041 --- Google
-configuration, T040 --- Provider interface, T039 --- Authorization,
-T038 --- Authentication all complete before it. See
-`docs/18_COMPLETED_WORK.md`.
+T050 --- Normalization pipeline. COMPLETE — `app/pipeline/normalize.py`:
+`FieldKind` + `normalize_record_data()`, Stage 3 of the data pipeline.
+Field kinds are declared by the caller, never guessed from a value's
+shape. NFC-only Unicode normalization (never NFKC). Every transform
+falls back to safe text-only cleanup when a value doesn't match its
+declared kind, never coercing/guessing. Wired immediately into
+`app/providers/google_maps/mapper.py`'s `map_place_to_record_draft()`
+via a new `FIELD_KINDS` constant — not left an orphaned module. 25 new
+tests, including a dedicated regression fixture
+(`tests/fixtures/pipeline/normalize_regression.json`). **Phase 5 (Data
+pipeline) now started.** T045 --- Provider contract tests and all of
+Phase 4 complete before it. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Build the provider-agnostic normalization pipeline stage (read
-`docs/T050_PROMPT.md` before assuming scope) — Stage 3 of
-`docs/08_DATA_PIPELINE_DEEP.md`, distinct from T043's Google-specific
-field mapping: pure, deterministic transformations applied to a
-`NormalizedItem`'s already-mapped `data` (whitespace trimming, safe
-Unicode normalization, URL normalization, numeric/timestamp/category
-normalization) that any current or future provider's output passes
-through uniformly, not duplicated per adapter. Must never invent a
-value for something genuinely missing (T050's own explicit
-instruction, echoing T043's same principle at this next stage). Unit
-tests per transformation + regression fixtures; acceptance is strict
-determinism (same input → identical output).
+Build the field-level data quality system (read `docs/T051_PROMPT.md`
+before assuming scope) — Stage 2/4 of `docs/08_DATA_PIPELINE_DEEP.md`
+("Schema validation" / "Quality"): define valid/warning/rejected
+states, validate types/ranges/required fields/coordinate ranges/URL
+syntax, produce field-level error objects, preserve job context. This
+operates on a `RecordDraft` (T043's output, now normalized by T050) —
+likely the first real consumer of `app.domain.record_search`'s
+"quality filtering" concept (T036 flagged `has_provider_id` as a
+placeholder pending this task). Acceptance: deterministic, no network
+calls — pure validation logic, same testing approach as every prior
+pipeline/provider task this session.
 
 ## Not yet in scope
 

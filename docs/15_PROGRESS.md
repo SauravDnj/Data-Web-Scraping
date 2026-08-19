@@ -14,7 +14,7 @@ tests: 0% V1: 0%
   2 Database           IN_PROGRESS        90%
   3 Backend            IN_PROGRESS        85%
   4 Provider           COMPLETE          100%
-  5 Data pipeline      PENDING             0%
+  5 Data pipeline      IN_PROGRESS        17%
   6 Worker             PENDING             0%
   7 Frontend           PENDING             0%
   8 Operations         PENDING             0%
@@ -23,15 +23,15 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T050 --- Normalization pipeline. (T027 PARTIAL, T012/T013 still open.)
+T051 --- Validation pipeline. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T045 --- Provider contract tests complete and verified (280 passed, 1
-skipped as expected), still no live MySQL needed. `GoogleMapsProvider`
-assembled — the first concrete `ProviderAdapter` — composing T041-T044.
-Found and fixed a real malformed-response robustness gap in T042's
-client along the way. **Phase 4 (Provider) is now fully complete.**
+T050 --- Normalization pipeline complete and verified (305 passed, 1
+skipped as expected), still no live MySQL needed. Provider-agnostic
+Stage 3 normalization (`app/pipeline/normalize.py`), wired immediately
+into the Google mapper. **Phase 5 (Data pipeline) now started**, Phase
+4 (Provider) fully complete before it.
 
 ## Rule
 

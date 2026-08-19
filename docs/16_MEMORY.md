@@ -69,12 +69,13 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T050 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045
-complete — Phase 4 Provider now fully done. T012/T013 prepared but NOT
-verified — see below. See the dated sections further down for
-T030-T045 detail; this header is not updated inline each time, check
-docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
+T051 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045 and
+T050 complete — Phase 4 Provider fully done, Phase 5 Data pipeline
+started. T012/T013 prepared but NOT verified — see below. See the
+dated sections further down for detail; this header is not updated
+inline each time, check docs/17_CURRENT_WORK.md for the authoritative
+up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -980,6 +981,85 @@ documented task list currently asks for that explicitly before T050+.
 
 Verified locally: 280 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (73 source files).
+
+## Normalization pipeline (T050) — current task now T051, Phase 5 (Data pipeline) started
+
+`app/pipeline/normalize.py` (new package, per
+`docs/24_BACKEND_FILE_PLAN.md`'s `app/pipeline/normalize.py`) — Stage 3
+("Normalization") of `docs/08_DATA_PIPELINE_DEEP.md`, applied AFTER a
+provider's own field mapping (T043's `normalize_place()` does Stage-1-
+equivalent field mapping only; this is the separate, later stage).
+`FieldKind` (StrEnum: `TEXT`/`URL`/`NUMBER`/`TIMESTAMP`/`CATEGORY`) +
+`normalize_record_data(data, field_kinds) -> dict` — pure, total,
+never raises.
+
+**Key design decision: field kinds are supplied by the caller, never
+guessed from a value's shape.** A string is only URL-normalized
+because the caller declared that key `FieldKind.URL`, never because it
+happens to start with `"http"`. This keeps "do not silently replace
+missing values with invented defaults" (item 8) honest at the
+*kind-detection* level too — heuristic shape-guessing would risk
+mis-normalizing a field that only coincidentally looks like a URL/
+number/timestamp. Undeclared keys default to `FieldKind.TEXT` (the one
+universally-safe transform: trim + NFC).
+
+**Unicode: NFC only, never NFKC** — NFC unifies canonically-equivalent
+representations of the same character (lossless); NFKC would fold
+compatibility variants (™→TM, fullwidth→ASCII digits, ligatures split
+apart), which changes actual content. This is the literal meaning of
+item 2's "normalize Unicode **only where safe**."
+
+**Every per-kind transform falls back to text-only cleanup (trim+NFC)
+when the value doesn't match its declared kind's shape** — a non-
+numeric string under `FieldKind.NUMBER`, an unparseable or
+no-explicit-timezone timestamp, a malformed/non-absolute URL. Never
+coerced, never dropped, never guessed. Numeric coercion is
+deliberately narrow: only a strict `-?\d+(\.\d+)?` pattern converts
+(no currency symbols, no thousand separators — those are
+locale-specific and would require guessing a format). Timestamp
+canonicalization only fires when the input has an *explicit* timezone
+(offset or `Z`) — a naive timestamp is left untouched rather than
+assuming a timezone that was never stated.
+
+**Wired into the existing pipeline immediately, not left an orphaned
+module**: `app/providers/google_maps/mapper.py`'s
+`map_place_to_record_draft()` now runs its output through
+`normalize_record_data()` before building `RecordDraft`, using a new
+`FIELD_KINDS` constant declaring Google's own mapped field names'
+kinds (`name`→TEXT, `website`→URL, `rating`/`user_rating_count`/
+`latitude`/`longitude`→NUMBER, `business_status`/`primary_type`/
+`types`/`price_level`→CATEGORY, ...). `normalize_place()` itself
+(matching `ProviderAdapter.normalize()`'s Protocol exactly, T040) is
+left untouched — Stage 3 normalization is a separate, explicit step,
+not silently folded into the Protocol method. Existing T043 tests for
+`map_place_to_record_draft()` still pass unchanged since the
+`full_place.json` fixture's values were already "clean" (no extra
+whitespace, already-lowercase enums, already-typed numbers) — verified
+by re-running them, not just assumed.
+
+**Found and worked around a real tool-level limitation while writing
+the Unicode NFC/NFKC test**: typing two visually-identical accented
+characters (one meant to be NFC-composed, one NFD-decomposed) as
+literal source text is unreliable — the file-editing tool could not
+reliably distinguish/match them once written, likely because *some*
+layer in the write/read/match chain silently re-normalizes non-ASCII
+text. Fixed by building both forms explicitly from code points via
+`chr(0x0065) + chr(0x0301)` (NFD) vs `chr(0x00E9)` (NFC) instead of
+typing either as a literal character — the test file is now pure
+ASCII throughout. Worth remembering for any future test that needs a
+*specific, exact* non-ASCII byte sequence: build it with `chr()`/
+`\uXXXX` escapes, don't type it as a literal character and trust it
+survives unchanged.
+
+25 new tests (`tests/unit/test_pipeline_normalize.py`) — one section
+per T050 IMPLEMENT item, plus a dedicated regression fixture
+(`tests/fixtures/pipeline/normalize_regression.json`, item 10,
+distinct from the inline per-transformation tests) covering every kind
+in one realistic mixed record, and a literal determinism test (item
+"Given the same input, output is identical").
+
+Verified locally: 305 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (75 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

@@ -34,8 +34,32 @@ from typing import Any
 
 from app.domain.provider_contracts import NormalizedItem, RawProviderItem
 from app.domain.records import RecordDraft
+from app.pipeline.normalize import FieldKind, normalize_record_data
 
 GOOGLE_MAPS_TEXT_SEARCH_OPERATION = "google_maps.places.text_search"
+
+# Stage 3 normalization (T050) field kinds for this mapper's own output
+# keys — declared here, not guessed from value shape, per
+# app.pipeline.normalize's own design principle. `open_now` (bool) is
+# deliberately absent: FieldKind.TEXT (the default for an undeclared
+# key) only touches strings, so a bool passes through untouched either
+# way, but leaving it out makes it visible in review that no data key
+# here needs a NUMBER/URL/TIMESTAMP/CATEGORY treatment for it.
+FIELD_KINDS: dict[str, FieldKind] = {
+    "name": FieldKind.TEXT,
+    "formatted_address": FieldKind.TEXT,
+    "phone_number": FieldKind.TEXT,
+    "weekday_descriptions": FieldKind.TEXT,
+    "website": FieldKind.URL,
+    "business_status": FieldKind.CATEGORY,
+    "primary_type": FieldKind.CATEGORY,
+    "types": FieldKind.CATEGORY,
+    "price_level": FieldKind.CATEGORY,
+    "rating": FieldKind.NUMBER,
+    "user_rating_count": FieldKind.NUMBER,
+    "latitude": FieldKind.NUMBER,
+    "longitude": FieldKind.NUMBER,
+}
 
 
 def normalize_place(raw_item: RawProviderItem) -> NormalizedItem:
@@ -108,16 +132,21 @@ def map_place_to_record_draft(
 ) -> RecordDraft:
     """Combines `normalize_place()` with the job/project context and
     collection timestamp a stateless `ProviderAdapter.normalize()`
-    call has no way to know on its own (T043 items 7/8). The worker
-    (T060+) is expected to call this once it actually orchestrates a
-    real collection run — `normalize_place()` alone is what satisfies
-    the `ProviderAdapter` Protocol itself."""
+    call has no way to know on its own (T043 items 7/8), **and** runs
+    the result through Stage 3 normalization (T050,
+    `app.pipeline.normalize`) — `normalize_place()` alone only does
+    Stage 1's field mapping (matching `ProviderAdapter.normalize()`'s
+    Protocol exactly, T040); this function is where the full pipeline
+    up to (not including) canonical-key computation (T052) actually
+    runs. The worker (T060+) is expected to call this, not
+    `normalize_place()` directly, once it orchestrates a real
+    collection run."""
     normalized = normalize_place(raw_item)
     return RecordDraft(
         project_id=project_id,
         job_id=job_id,
         provider="google_maps",
-        data=normalized.data,
+        data=normalize_record_data(normalized.data, FIELD_KINDS),
         collected_at=collected_at,
         provider_record_id=normalized.provider_record_id,
     )

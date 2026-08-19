@@ -7,15 +7,25 @@ being changed.
 
 ## Active task
 
-T050 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045
+T051 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045, T050
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action). Phase 4 (Provider) fully
-complete as of T045.
+complete as of T045; Phase 5 (Data pipeline) started with T050.
 
 ## Active files
 
 ``` text
-None yet — T050 has not started.
+None yet — T051 has not started.
+```
+
+## T050 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/__init__.py                        (new)
+apps/api/app/pipeline/normalize.py                        (new)
+apps/api/app/providers/google_maps/mapper.py              (modified — wired in normalize_record_data)
+tests/fixtures/pipeline/normalize_regression.json         (new)
+tests/unit/test_pipeline_normalize.py                     (new)
 ```
 
 ## T045 files (complete — for reference)
