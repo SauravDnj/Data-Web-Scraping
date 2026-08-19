@@ -66,7 +66,11 @@
         supporting domain value objects + `FakeProviderAdapter`; reused
         T034's `ConfigValidationResult` rather than duplicating — see
         docs/16_MEMORY.md)
--   [ ] T041--T045 provider (Google-specific)
+-   [x] T041 Google configuration (`GoogleMapsConfigValidator` —
+        first real, non-fake `ProviderConfigValidator`; Places API
+        (New) Text Search selected + verified against live Google docs
+        on 2026-08-20 — see docs/16_MEMORY.md)
+-   [ ] T042--T045 provider (Google-specific)
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

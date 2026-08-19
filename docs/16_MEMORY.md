@@ -69,10 +69,10 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T041 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T040
+T042 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T041
 complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T040 detail; this header is not
+dated sections further down for T030-T041 detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
 authoritative up-to-the-minute status.)
 
@@ -621,6 +621,80 @@ which exist yet).
 
 Verified locally: 197 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (67 source files).
+
+## Google configuration (T041) — current task now T042
+
+`app/providers/google_maps/config.py` (new subpackage, per
+`docs/24_BACKEND_FILE_PLAN.md`'s `app/providers/google_maps/`):
+`GoogleMapsConfigValidator`, satisfying T034's
+`ProviderConfigValidator` Protocol exactly — this is the first
+*real* validator plugged into `ConfigurationService` (every use before
+this was a `tests/unit/fakes.py` fake). No network call, no SDK — pure
+validation, matching T041's scope boundary against T042 (which builds
+the actual HTTP client) exactly.
+
+**Selected operation — a design decision this task had to make, no
+doc pinned one down**: **Places API (New) — Text Search**
+(`POST /v1/places:searchText`), chosen because docs/07's conceptual
+example config (`query` + `location` + `radius_meters` + `fields` +
+`max_results`) matches that operation's shape exactly — Nearby Search
+filters by place type rather than free text, and the legacy (pre-2025)
+Places API is deprecated in favor of "New". Recorded as a resolved
+decision T042 must build against or explicitly revise, same pattern as
+T000's four resolved disagreements.
+
+**Verified against Google's live public docs on 2026-08-20** (fetched
+directly, not recalled from training data — Google Maps Platform specs
+change and this agent's knowledge cutoff predates "today"):
+`https://developers.google.com/maps/documentation/places/web-service/text-search`
+(pageSize/maxResultCount 1-20 per page, 60 results total across all
+pages — `MAX_RESULT_COUNT`; locationBias circular radius 0.0-50,000.0
+meters — `MAX_RADIUS_METERS`; `X-Goog-FieldMask` required, no default
+field list) and
+`.../data-fields` (field→SKU-tier mapping — `ALLOWED_FIELDS` here is a
+curated subset of real, current field names, not Google's entire
+catalog). **Must be reverified against those same live pages before
+production release** — this is T041 item 10's explicit instruction,
+not just good practice; a config validator silently trusting stale
+limits would defeat the entire point of "invalid requests never reach
+provider execution."
+
+**This app's config field names are snake_case
+(`docs/CODING_STANDARDS.md`'s convention) — deliberately NOT Google's
+own camelCase request-body field names.** Translating
+`{"query": ..., "fields": [...]}` into the real
+`{"textQuery": ..., <X-Goog-FieldMask header>}` shape is T042's job;
+T041 only proves a config *could* become a legal request.
+
+**Server-side credential presence, checked here specifically because
+T041's own IMPLEMENT list asks for it**: `GoogleMapsConfigValidator`
+takes `api_key: str | None` at construction (sourced from
+`app.core.config.Settings.google_maps_api_key`, added at T014, unused
+until now) — never read from the `config` dict itself, so a request
+body can never smuggle in a credential value. Missing key produces a
+deliberately generic error message (same "don't leak operational
+detail" instinct as T038's same-message-for-wrong-password/
+unknown-email, for a different reason here).
+
+**A genuinely useful catch, not a hypothetical**: docs/07's own
+conceptual example config literally uses `"max_results": 100` — 40
+over Google's real 60-result cap. `test_max_results_over_googles_
+hard_cap_is_rejected` uses exactly that value, proving the validator
+catches the docs' own example as unrealistic, with an actionable error
+naming the real limit — exactly the kind of gap T041 exists to close
+before a job ever reaches the worker.
+
+19 new tests (`tests/unit/test_google_maps_config.py`): every rule
+individually broken from one fully-valid example config (proving each
+rule causes its own rejection, not some interacting combination),
+multiple simultaneous violations all reported together, and one
+service-layer test wiring `GoogleMapsConfigValidator` into a real
+`ConfigurationService` (not a fake) proving an invalid config never
+becomes an active, persisted version — T041's literal acceptance
+criterion.
+
+Verified locally: 216 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (69 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

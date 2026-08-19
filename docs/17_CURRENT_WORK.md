@@ -2,35 +2,38 @@
 
 ## Active task
 
-T041 --- Google configuration.
+T042 --- Google client.
 
 ## Previous task
 
-T040 --- Provider interface. COMPLETE — `app/providers/base.py`
-(`ProviderAdapter` Protocol: `validate_config`/`estimate`/`collect`/
-`normalize`/`classify_error`/`health_check`), `app/domain/
-provider_contracts.py` (`UsageEstimate`, `NormalizedItem`,
-`ProviderErrorCategory` — the 7 categories from docs/07 —
-`ProviderError`, `ProviderHealth`), `FakeProviderAdapter`
-(`tests/unit/fakes.py`). `ConfigValidationResult` reused from T034's
-`app.domain.provider_validation`, not duplicated. 12 new tests. T039
---- Authorization and T038 --- Authentication complete before it. See
+T041 --- Google configuration. COMPLETE —
+`app/providers/google_maps/config.py`: `GoogleMapsConfigValidator`,
+the first real (non-fake) `ProviderConfigValidator` plugged into T034's
+`ConfigurationService`. Selected operation: Places API (New) Text
+Search — resolved as a design decision, recorded for T042 to build
+against. Field names/limits verified against Google's live docs on
+2026-08-20 (fetched, not recalled). 19 new tests, including one proving
+docs/07's own example `max_results: 100` is correctly rejected (40 over
+Google's real 60-result cap). T040 --- Provider interface, T039 ---
+Authorization, T038 --- Authentication all complete before it. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Validate Google-specific configuration before execution (read
-`docs/T041_PROMPT.md` before assuming scope) — supported operation(s),
-allowed request fields, query/location/numeric-range validation,
-max-usage limits, server-side credential-presence check, actionable
-validation errors. Needs current, accurate Google Maps Platform
-API/product documentation (field names, limits) verified via web
-search before writing validation rules — do not rely on
-possibly-stale training knowledge for exact current field names/quota
-values. Must NOT implement CAPTCHA solving, bypass rate limits, or use
-unauthorized browser scraping as a fallback (T041's explicit DO NOT
-list). This is where `app/providers/google_maps/` (T040's file-plan
-placeholder) gets its first real file.
+Implement the real Google Maps Platform HTTP client boundary (read
+`docs/T042_PROMPT.md` before assuming scope) — server-side credential
+loading (`Settings.google_maps_api_key`, T014), request timeout,
+documented-transient-error retry, request construction (translating
+T041's snake_case config into the real camelCase Places API (New) Text
+Search body + `X-Goog-FieldMask` header), response parsing, pagination
+(`pageToken`/`nextPageToken`, up to the 60-result cap T041 already
+validates against), structured provider errors (map into T040's
+`ProviderErrorCategory`), credential redaction from logs, dependency
+injection so tests never need a live API key. Must NOT bypass CAPTCHA,
+evade quotas, rotate proxies, use fake credentials, or collect private
+data (T042's explicit DO NOT list) — acceptance is mock-based (verify
+request construction/response handling), no real credentials
+committed or used in the automated suite.
 
 ## Not yet in scope
 

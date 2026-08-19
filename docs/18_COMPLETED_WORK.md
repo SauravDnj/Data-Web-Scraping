@@ -808,3 +808,48 @@ Next: T041 --- Google configuration (validate Google-specific config
 before execution — needs current, accurate Google Maps Platform
 API/product documentation verified via web search, not assumed from
 training knowledge).
+
+### T041 --- Google configuration
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/providers/google_maps/config.py`: `GoogleMapsConfigValidator`
+    — the first real (non-fake) `ProviderConfigValidator` implementation
+    plugged into T034's `ConfigurationService` (every prior use was a
+    `tests/unit/fakes.py` fake). No network call, no SDK.
+-   **Resolved a design decision no doc pinned down**: selected
+    operation is Places API (New) — Text Search, chosen because
+    docs/07's conceptual example config matches that operation's shape
+    exactly (not the legacy Places API, deprecated; not Nearby Search,
+    which filters by type rather than free text).
+-   **Field names and limits verified against Google's live public
+    documentation, fetched on 2026-08-20** (not recalled from training
+    data, which predates "today" and would risk being stale):
+    `pageSize`/`maxResultCount` 1-20 per page with a 60-result cap
+    across all pages, `locationBias` radius 0.0-50,000.0 meters,
+    required `X-Goog-FieldMask`, and the field→SKU-tier mapping behind
+    `ALLOWED_FIELDS`. Documented as needing reverification against the
+    live docs before production release (T041's own instruction).
+-   Validates: server-side credential presence (`api_key`, never read
+    from the request body itself), query non-empty, location lat/lng
+    ranges, radius requires location + stays within Google's cap,
+    fields required + each one a known field name, max_results within
+    Google's real cap, price_levels excludes `PRICE_LEVEL_FREE`
+    (request-invalid per Google), rank_preference enum.
+-   **Caught a real inconsistency in the docs pack itself**: docs/07's
+    own conceptual example config uses `max_results: 100`, 40 over
+    Google's real 60-result cap — a dedicated test proves the validator
+    rejects exactly that value with an actionable error naming the
+    real limit.
+-   19 new tests, including one wiring `GoogleMapsConfigValidator` into
+    a real `ConfigurationService` (not a fake) to prove an invalid
+    config never becomes an active, persisted version — T041's literal
+    acceptance criterion.
+-   Verified locally: 216 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (69 source files).
+
+Next: T042 --- Google client (the real HTTP client boundary — request
+construction/response parsing/pagination/retries against mocked
+responses, no live credentials in the automated suite).

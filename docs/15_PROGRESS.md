@@ -13,7 +13,7 @@ tests: 0% V1: 0%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
   3 Backend            IN_PROGRESS        85%
-  4 Provider           IN_PROGRESS        15%
+  4 Provider           IN_PROGRESS        30%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
   7 Frontend           PENDING             0%
@@ -23,16 +23,17 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T041 --- Google configuration. (T027 PARTIAL, T012/T013 still open.)
+T042 --- Google client. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T040 --- Provider interface complete and verified (197 passed, 1
-skipped as expected), still no live MySQL needed. `ProviderAdapter`
-Protocol (`app/providers/base.py`) + supporting domain value objects
-(`app/domain/provider_contracts.py`) + `FakeProviderAdapter`; reused
-T034's `ConfigValidationResult` rather than duplicating it. T039 ---
-Authorization and T038 --- Authentication also complete before it.
+T041 --- Google configuration complete and verified (216 passed, 1
+skipped as expected), still no live MySQL needed. First real
+(non-fake) `ProviderConfigValidator` (`GoogleMapsConfigValidator`,
+Places API (New) Text Search) plugged into T034's
+`ConfigurationService`; field/limit assumptions verified against
+Google's live docs on 2026-08-20. T040 --- Provider interface, T039
+--- Authorization, T038 --- Authentication all complete before it.
 
 ## Rule
 
