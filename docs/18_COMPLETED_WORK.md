@@ -613,3 +613,27 @@ Evidence:
 
 Next: T036 --- Record service (server-side search/filtering/detail
 retrieval).
+
+### T036 --- Record service
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/record_search.py` (`RecordSearchFilters`, `RecordSort`)
+    and `app/services/records.py` (`RecordService`).
+-   `RecordRepository.search()` translates provider/date/quality
+    filters and sort into a real server-side query.
+    `MAX_RECORD_PAGE_LIMIT = 200` enforced in the repository itself.
+-   "Quality filtering" implemented as `has_provider_id` (generic,
+    no dedicated schema field exists yet — T051 should extend/replace).
+-   11 new tests including a synthetic 250-record dataset proving
+    3-page pagination is disjoint, and a 100,000-row request clamped
+    to 200. Plus scoping, filters, sort, detail, not-found, cross-user
+    denial.
+-   Verified locally: 158 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (51 source files).
+
+Next: T037 --- Audit service (structured audit events — likely
+substantially already covered by `AuditLogRepository`/the pattern
+established across T033-T036; check what's actually left to add).

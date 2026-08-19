@@ -12,7 +12,7 @@ tests: 0% V1: 0%
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
-  3 Backend            IN_PROGRESS        60%
+  3 Backend            IN_PROGRESS        70%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
@@ -23,13 +23,13 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T036 --- Record service. (T027 PARTIAL, T012/T013 still open.)
+T037 --- Audit service. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T035 --- Job service complete and verified (148 passed, 1 skipped as
-expected), still no live MySQL needed. First ALTER-TABLE migration in
-the project; needed Alembic batch mode to work on SQLite.
+T036 --- Record service complete and verified (158 passed, 1 skipped
+as expected), still no live MySQL needed. Synthetic 250-record
+pagination test proves safe, capped, project-scoped access.
 
 ## Rule
 

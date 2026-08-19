@@ -49,7 +49,9 @@
 -   [x] T035 Job service (transactional creation, idempotency, gated
         retry — first ALTER-TABLE migration, needed Alembic batch mode
         for SQLite; see docs/16_MEMORY.md)
--   [ ] T036--T039 backend
+-   [x] T036 Record service (project-scoped search/filter/sort, safe
+        pagination, synthetic-large-dataset test)
+-   [ ] T037--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

@@ -2,19 +2,22 @@
 
 ## Active task
 
-T036 --- Record service.
+T037 --- Audit service.
 
 ## Previous task
 
-T035 --- Job service. COMPLETE — 14 new tests, still no live MySQL
-needed. Added `jobs.idempotency_key` via the project's first
-ALTER-TABLE migration, which needed Alembic batch mode to work on
-SQLite (real bug caught, fixed). See `docs/18_COMPLETED_WORK.md`.
+T036 --- Record service. COMPLETE — 11 new tests including a synthetic
+250-record pagination test, still no live MySQL needed. See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement server-side record search, filtering, and detail retrieval,
-on `app.repositories.records.RecordRepository`.
+Implement structured audit events. Likely substantially already
+covered — every service (T033-T036) already calls
+`AuditLogRepository.create()` for its mutations. Check T037's exact
+prompt for what's genuinely still missing (e.g. a query/reporting
+service on top of the repository, standardized action-name
+conventions) before assuming a large build is needed.
 
 ## Still open
 

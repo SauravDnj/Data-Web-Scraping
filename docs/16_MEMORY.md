@@ -325,6 +325,39 @@ not-found, cross-user denial.
 Verified locally: 148 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (49 source files).
 
+## Record service (T036) — current task now T037
+
+`app/domain/record_search.py` (`RecordSearchFilters`, `RecordSort`/
+`RecordSortField`) and `app/services/records.py` (`RecordService`).
+`RecordRepository.search()` (new) translates provider/date-range/
+"quality" filters and sort into a real server-side SQLAlchemy query —
+never fetches unfiltered rows and filters in Python.
+
+**"Quality filtering" has no dedicated schema field yet** (T051,
+Validation pipeline, isn't built) — implemented as
+`has_provider_id: bool | None`, a genuine, generic, non-provider-
+specific proxy (does this record have a resolved stable provider ID,
+vs. only a canonical-key fallback). T051 should extend or replace this
+with a real `validation_status`/quality field, not silently diverge.
+
+**`MAX_RECORD_PAGE_LIMIT = 200`** enforced inside the repository
+itself (`app/repositories/records.py`), not just the service — so
+"DO NOT load all records into memory" holds even if a caller bypasses
+`RecordService` and calls the repository directly. Chose capped
+offset/limit pagination over true cursor/keyset pagination (T036 says
+"cursor OR safe pagination" — either satisfies it); revisit with
+keyset pagination if T092 (performance review) finds offset pagination
+a real bottleneck at production scale.
+
+11 new tests, including the literal "synthetic large dataset" item:
+250 records, 3-page pagination proven disjoint; a separate test proves
+a 100,000-row request gets clamped to 200. Plus project-scoping,
+provider filter, date filter, quality filter, sort order, detail
+retrieval, not-found, cross-user denial (both search and detail).
+
+Verified locally: 158 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (51 source files).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows
