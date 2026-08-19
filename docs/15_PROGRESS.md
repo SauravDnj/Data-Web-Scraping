@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           PENDING             0%
+  2 Database           IN_PROGRESS        15%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,14 +23,15 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T020 --- SQLAlchemy foundation. (T012/T013 open, blocked on user
-action.)
+T021 --- Alembic foundation. (T012/T013 open, blocked on user action;
+T021 likely needs T012 to fully complete.)
 
 ## Last verified milestone
 
-T015 --- Worker skeleton complete and verified locally (14/14 tests,
-lint/mypy clean, real manual run: startup, graceful Redis-unavailable
-handling, clean shutdown with no orphaned process).
+T020 --- SQLAlchemy foundation complete and verified (18 passed, 1
+skipped as expected) without needing live MySQL — SQLite proved the
+plumbing, a deterministic unreachable-host test proved error clarity,
+and a self-activating MySQL test is in place for when T012 lands.
 
 ## Rule
 

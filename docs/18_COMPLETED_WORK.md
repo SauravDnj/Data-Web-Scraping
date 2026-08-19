@@ -237,3 +237,35 @@ Evidence:
 
 Next task: T012/T013 (blocked on user action) then T020 --- SQLAlchemy
 foundation.
+
+### T020 --- SQLAlchemy foundation
+
+Status: COMPLETE
+
+Evidence:
+
+-   `apps/api/app/db/base.py` (`Base` + explicit naming convention),
+    `app/db/session.py` (`build_engine`/`build_session_factory`
+    factories, `get_engine`/`get_session_factory` cached singletons,
+    `session_scope` transaction boundary, `get_db` FastAPI
+    dependency), `app/db/models/` (empty, populated T022-T026).
+-   4 new tests: `tests/unit/test_db_session.py` (temporary-schema
+    creation, rollback-on-error, naming convention on a real
+    constraint — all against SQLite in-memory, a real if
+    non-MySQL database) and
+    `tests/integration/test_db_connection_errors.py` (connection
+    errors are clear and credential-free, against a
+    deterministically-unreachable target).
+-   `tests/integration/test_db_mysql.py` added: skips cleanly now
+    (MySQL/app_user not set up — T012 pending), will run for real once
+    T012 lands, with no code change needed.
+-   Verified locally: 18 passed, 1 skipped as expected, ruff/mypy
+    clean.
+-   No business models created, no provider code, no live MySQL
+    dependency for this task's own verification (deliberate — see
+    docs/16_MEMORY.md for why that's a legitimate reading of the
+    acceptance criteria).
+
+Next task: T021 --- Alembic foundation (this one genuinely needs a
+live MySQL connection to run a real migration against — likely the
+next hard stop pending T012).

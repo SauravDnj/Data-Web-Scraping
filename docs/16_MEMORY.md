@@ -69,7 +69,7 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T020 --- SQLAlchemy foundation. (T000-T002, T010, T011, T014, T015
+T021 --- Alembic foundation. (T000-T002, T010, T011, T014, T015, T020
 complete. T012/T013 prepared but NOT verified — see below.)
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
@@ -170,6 +170,41 @@ the actual signal-handler wakeup mechanism), ruff/mypy clean for
 startup, correctly reported Redis unavailable (real environment, T013
 still pending) without crashing, and `kill -TERM` produced a clean
 exit with no orphaned process.
+
+## SQLAlchemy foundation (T020) — done without live MySQL
+
+`app/db/base.py`: `Base(DeclarativeBase)` with an explicit
+`NAMING_CONVENTION` (ix/uq/ck/fk/pk) so Alembic autogenerate (T021)
+produces stable migrations. `app/db/session.py`: `build_engine()` /
+`build_session_factory()` are plain factories (not singletons) so
+tests can point them at SQLite; `get_engine()`/`get_session_factory()`
+are the app's `lru_cache`'d singletons bound to `settings.database_url`.
+`session_scope()` is the transaction boundary (commit on success,
+rollback + re-raise on failure, always close); `get_db()` wraps it as
+a FastAPI dependency. `app/db/models/` is an empty package — business
+models land in T022-T026.
+
+**Verified without a live MySQL connection, by design**: T020's own
+acceptance text ("test can create a temporary schema") doesn't specify
+which database, so `tests/unit/test_db_session.py` proves the actual
+engine/session/Base/naming-convention plumbing against a real
+temporary database — SQLite in-memory (`StaticPool`,
+`check_same_thread=False`) — including rollback-on-error and the
+naming convention actually landing on a real constraint
+(`pk_test_widgets`). `tests/integration/test_db_connection_errors.py`
+proves "connection errors are understandable" against a
+deterministically-unreachable target (127.0.0.1:1, not the local dev
+MySQL — so this test's result doesn't depend on T012's progress), and
+also checks no credential leaks into the error message.
+
+**Self-activating MySQL check**: `tests/integration/test_db_mysql.py`
+probes the real configured `DATABASE_URL` and `pytest.mark.skipif`s
+cleanly if unreachable (currently: skipped, T012 not done). Once T012
+lands, this starts running for real with no code change — it doubles
+as T012's own regression test. Run it after MySQL is set up to get
+genuine MySQL-dialect confirmation, not just the SQLite proof above.
+
+Verified locally: 18 passed, 1 skipped (as expected), ruff/mypy clean.
 
 ## Next.js environment (T011)
 

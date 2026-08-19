@@ -7,13 +7,14 @@ being changed.
 
 ## Active task
 
-T020 (T000-T002, T010, T011, T014, T015 complete; T012/T013 prepared
-but blocked on user action — see docs/18_COMPLETED_WORK.md).
+T021 (T000-T002, T010, T011, T014, T015, T020 complete; T012/T013
+prepared but blocked on user action — see docs/18_COMPLETED_WORK.md).
+T021 likely needs T012 to actually run a migration.
 
 ## Active files
 
 ``` text
-None yet — T020 has not started.
+None yet — T021 has not started.
 ```
 
 ## Rule

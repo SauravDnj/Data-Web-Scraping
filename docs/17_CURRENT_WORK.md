@@ -2,18 +2,28 @@
 
 ## Active task
 
-T020 --- SQLAlchemy foundation.
+T021 --- Alembic foundation.
 
 ## Previous task
 
-T015 --- Worker skeleton. COMPLETE (done ahead of T012/T013 — see
-below). See `docs/18_COMPLETED_WORK.md` and `workers/worker_main.py`.
+T020 --- SQLAlchemy foundation. COMPLETE (verified against SQLite + a
+deterministic connection-error test, no live MySQL needed — see
+docs/16_MEMORY.md). See `docs/18_COMPLETED_WORK.md` and
+`apps/api/app/db/session.py`.
 
 ## Goal
 
-Create the database engine, session management, declarative base
-model, and naming/typing conventions that later schema tasks
-(T021-T027) build on.
+Configure Alembic and verify a clean migration against a real
+database.
+
+## Likely hard stop
+
+Alembic's whole point is running real migrations. Unlike T020, there's
+probably no honest way to verify "migration applies cleanly" without
+an actual reachable MySQL — T012 needs to land first. Will attempt to
+get as far as possible (Alembic config/env.py wiring, migration
+scaffolding) and flag clearly if/when real execution is required to
+call it done.
 
 ## Not yet in scope
 
@@ -26,13 +36,8 @@ model, and naming/typing conventions that later schema tasks
 
 ## Handoff
 
-After T020:
-
-T021 (Alembic foundation) → T022 (identity DB) → ... Return to
-T012/T013 once unblocked — T021's migrations will need a real MySQL
-connection to actually run against, so T012 should land before T021
-finishes, even though T020 itself (engine/session code only, no live
-connection required) doesn't block on it.
+After T021: T022 (identity DB) → T023 → ... all of which also need
+real MySQL. Return to T012/T013 as soon as possible.
 
 ## Open blockers (user action needed)
 
