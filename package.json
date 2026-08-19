@@ -1,0 +1,6 @@
+{
+  "name": "google-maps-data-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-first data collection platform for Google Maps Platform data."
+}
