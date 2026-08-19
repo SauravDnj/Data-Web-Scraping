@@ -2,33 +2,35 @@
 
 ## Active task
 
-T040 --- Provider interface.
+T041 --- Google configuration.
 
 ## Previous task
 
-T039 --- Authorization. COMPLETE — confirmed ownership was already
-correctly enforced across Project/Config/Job/Record services
-(T033-T036); added the centralized HTTP error mapping
-(`app/api/service_errors.py`, so `PermissionDeniedError`/
-`NotFoundError`/`InvalidStateError` reach clients as 403/404/409
-without every future route needing to catch them by hand) and 6
-previously-missing negative cross-user tests. Full review in
-`database/AUTHORIZATION_REVIEW.md`. T038 --- Authentication also
-COMPLETE before it — password login + opaque server-side session
-tokens, account lockout, `/api/v1/auth/{login,logout,me}`. See
+T040 --- Provider interface. COMPLETE — `app/providers/base.py`
+(`ProviderAdapter` Protocol: `validate_config`/`estimate`/`collect`/
+`normalize`/`classify_error`/`health_check`), `app/domain/
+provider_contracts.py` (`UsageEstimate`, `NormalizedItem`,
+`ProviderErrorCategory` — the 7 categories from docs/07 —
+`ProviderError`, `ProviderHealth`), `FakeProviderAdapter`
+(`tests/unit/fakes.py`). `ConfigValidationResult` reused from T034's
+`app.domain.provider_validation`, not duplicated. 12 new tests. T039
+--- Authorization and T038 --- Authentication complete before it. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Define the generic `ProviderAdapter` contract (read `docs/T040_PROMPT.md`
-before assuming scope) — the boundary the rest of the application
-depends on without knowing Google SDK details. Resolves the interim
-`app.domain.provider_validation.ProviderConfigValidator` Protocol T034
-created explicitly to be reconciled here (see its docstring and
-`docs/16_MEMORY.md`'s T034 section) — do not silently diverge from it,
-reconcile or replace it deliberately. Pure Python, no Google SDK calls,
-no browser automation — should hold up fine on the SQLite-substitution
-approach same as T030-T039.
+Validate Google-specific configuration before execution (read
+`docs/T041_PROMPT.md` before assuming scope) — supported operation(s),
+allowed request fields, query/location/numeric-range validation,
+max-usage limits, server-side credential-presence check, actionable
+validation errors. Needs current, accurate Google Maps Platform
+API/product documentation (field names, limits) verified via web
+search before writing validation rules — do not rely on
+possibly-stale training knowledge for exact current field names/quota
+values. Must NOT implement CAPTCHA solving, bypass rate limits, or use
+unauthorized browser scraping as a fallback (T041's explicit DO NOT
+list). This is where `app/providers/google_maps/` (T040's file-plan
+placeholder) gets its first real file.
 
 ## Not yet in scope
 

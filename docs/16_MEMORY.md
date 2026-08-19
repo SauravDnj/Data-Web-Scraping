@@ -69,10 +69,10 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T040 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T039
+T041 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T040
 complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T039 detail; this header is not
+dated sections further down for T030-T040 detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
 authoritative up-to-the-minute status.)
 
@@ -551,6 +551,76 @@ tests = 9 new tests total.
 
 Verified locally: 185 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (66 source files).
+
+## Provider interface (T040) — current task now T041
+
+`app/domain/provider_contracts.py`: `UsageEstimate` (validates
+non-negative), `RawProviderItem` (PEP 695 `type` alias for
+`Mapping[str, Any]`, matching `Envelope[T]`'s PEP 695 style),
+`NormalizedItem` (`provider_record_id`/`data` — field names
+deliberately match `Record.provider_record_id`/`Record.data` for a
+direct 1:1 mapping once T052/T053 build the real pipeline),
+`ProviderErrorCategory` (StrEnum, the exact 7 categories from
+`docs/07_PROVIDER_AND_GOOGLE_WORKFLOW.md`'s "Errors" section:
+authentication/quota/rate/invalid_request/temporary/permanent/
+unknown), `ProviderError`, `ProviderHealth`. `ConfigValidationResult`
+deliberately stays where T034 put it
+(`app.domain.provider_validation`) — reused, not duplicated, exactly
+as that file's own docstring said T040 should do.
+
+`app/providers/base.py` (new package, per
+`docs/24_BACKEND_FILE_PLAN.md`): `ProviderAdapter`
+(`@runtime_checkable` Protocol) — `validate_config`/`estimate`/
+`collect`/`normalize`/`classify_error` naming matches the T000-resolved
+decision exactly (docs/16_MEMORY.md's "Resolved design decisions"), so
+a future `GoogleMapsProvider` (T041-T044) implements this contract
+directly rather than inventing its own method names. `collect()`
+returns `Iterator[RawProviderItem]`, not a buffered list/result object
+— same "never require everything in memory at once" principle T036
+applied to `RecordService`. No SDK import, no HTTP client, no browser
+automation reference anywhere in this module (T040's explicit "DO
+NOT" instructions) — the module docstring says so explicitly as a
+guardrail for future edits.
+
+**One deliberately-NOT-built piece, flagged rather than silently
+skipped**: docs/07 describes a future `ProviderRegistry` that would
+let `ConfigurationService`'s `ProviderConfigValidator` dispatch across
+multiple registered `ProviderAdapter`s by name. No task in
+`docs/00_TASK_INDEX.md`/`docs/T0*_PROMPT.md` currently lists building
+that registry, and T040's own IMPLEMENT list doesn't mention it — so
+it's out of scope here, documented in `ProviderAdapter`'s docstring
+rather than built speculatively ahead of a task that asks for it.
+
+**Interim taxonomy note carried forward, not resolved here**:
+`app.domain.job_errors.RETRYABLE_ERROR_CLASSES` (T035's interim
+job-failure retry set: `transient_network`/`rate_limit`/`persistence`)
+is a different, already-existing taxonomy from
+`ProviderErrorCategory`'s 7 categories — T044 ("Provider error
+mapping") is where these get reconciled, not T040 (T040 has no
+dependency on T035/T044 and doesn't touch job retry logic).
+
+`FakeProviderAdapter` added to `tests/unit/fakes.py` (that file's
+docstring already said this belonged there, written at T034):
+deterministic, no I/O, configurable raw items;
+`classify_error` maps `TimeoutError` → `TEMPORARY`, anything else →
+`UNKNOWN` (a real adapter's classification, T041+, will be far more
+specific — this is just enough for the contract test to prove
+dispatch happens).
+
+12 new tests (`tests/unit/test_provider_interface.py`): protocol
+satisfaction via `isinstance(fake, ProviderAdapter)` (only possible
+because the Protocol is `@runtime_checkable`), config validation
+(valid/invalid), `UsageEstimate` reflecting available items + its own
+negative-value rejection, `collect()` proven to be a real lazy
+iterator (not a list — `iter(items) is items`) that yields every raw
+item, `normalize()`'s exact field mapping, both `classify_error`
+branches, `health_check()`, and a full
+validate→estimate→collect→normalize lifecycle test matching docs/07's
+diagram (minus the budget check and the real network call, neither of
+which exist yet).
+
+Verified locally: 197 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (67 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

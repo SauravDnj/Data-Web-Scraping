@@ -62,7 +62,11 @@
         enforced across T033-T036's services; added centralized HTTP
         error mapping + 6 missing negative cross-user tests — see
         database/AUTHORIZATION_REVIEW.md)
--   [ ] T040--T045 provider
+-   [x] T040 Provider interface (`ProviderAdapter` Protocol +
+        supporting domain value objects + `FakeProviderAdapter`; reused
+        T034's `ConfigValidationResult` rather than duplicating — see
+        docs/16_MEMORY.md)
+-   [ ] T041--T045 provider (Google-specific)
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

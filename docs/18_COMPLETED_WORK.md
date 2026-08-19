@@ -759,3 +759,52 @@ Evidence:
 Next: T040 --- Provider interface (generic `ProviderAdapter` contract —
 resolves the interim `ProviderConfigValidator` Protocol T034 created
 explicitly to be reconciled here).
+
+### T040 --- Provider interface
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/provider_contracts.py`: `UsageEstimate` (rejects
+    negative unit counts), `RawProviderItem` (PEP 695 type alias),
+    `NormalizedItem` (field names match `Record.provider_record_id`/
+    `Record.data` for a direct pipeline mapping later),
+    `ProviderErrorCategory` (StrEnum, the exact 7 categories from
+    `docs/07_PROVIDER_AND_GOOGLE_WORKFLOW.md`), `ProviderError`,
+    `ProviderHealth`.
+-   `app/providers/base.py` (new package): `ProviderAdapter`
+    (`@runtime_checkable` Protocol) —
+    `validate_config`/`estimate`/`collect`/`normalize`/
+    `classify_error`/`health_check`, matching the T000-resolved method
+    naming exactly. `collect()` returns a lazy `Iterator`, not a
+    buffered list. No SDK import, no HTTP client, no browser-automation
+    reference anywhere in the module (T040's explicit DO NOT list).
+-   Reused `ConfigValidationResult`/`ProviderConfigValidator` from
+    T034's `app.domain.provider_validation` rather than duplicating —
+    exactly what that file's own docstring asked T040 to do.
+-   `FakeProviderAdapter` added to `tests/unit/fakes.py` (already
+    anticipated there since T034): deterministic, configurable raw
+    items, no I/O.
+-   **Documented rather than built speculatively**: docs/07's future
+    `ProviderRegistry` (dispatching multiple adapters by name) isn't
+    listed in any current task, so it wasn't built here — flagged in
+    `ProviderAdapter`'s docstring instead. The overlap between
+    `ProviderErrorCategory` (T040) and `app.domain.job_errors.
+    RETRYABLE_ERROR_CLASSES` (T035's interim retry set) is explicitly
+    left for T044 ("Provider error mapping") to reconcile, not
+    resolved here — no dependency on T035/T044 exists at T040.
+-   12 new tests (`tests/unit/test_provider_interface.py`): protocol
+    satisfaction via `isinstance`, validation (valid/invalid),
+    `UsageEstimate` behavior (+ its own negative-value rejection),
+    `collect()` proven to be a real lazy iterator yielding every raw
+    item, `normalize()`'s exact field mapping, both `classify_error`
+    branches, `health_check()`, and a full
+    validate→estimate→collect→normalize lifecycle test.
+-   Verified locally: 197 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (67 source files).
+
+Next: T041 --- Google configuration (validate Google-specific config
+before execution — needs current, accurate Google Maps Platform
+API/product documentation verified via web search, not assumed from
+training knowledge).

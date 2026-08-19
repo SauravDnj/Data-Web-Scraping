@@ -7,14 +7,24 @@ being changed.
 
 ## Active task
 
-T040 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T039
+T041 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T040
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T040 has not started.
+None yet — T041 has not started.
+```
+
+## T040 files (complete — for reference)
+
+``` text
+apps/api/app/domain/provider_contracts.py    (new)
+apps/api/app/providers/__init__.py           (new)
+apps/api/app/providers/base.py               (new)
+tests/unit/fakes.py                          (modified — FakeProviderAdapter added)
+tests/unit/test_provider_interface.py        (new)
 ```
 
 ## T039 files (complete — for reference)
