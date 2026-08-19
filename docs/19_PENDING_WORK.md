@@ -74,7 +74,11 @@
         retry policy never bypasses auth/quota/rate denials, full
         pagination; all tests use `httpx.MockTransport`, no live
         credentials — see docs/16_MEMORY.md)
--   [ ] T043--T045 provider (Google-specific)
+-   [x] T043 Google response mapper (`normalize_place()` — real
+        `ProviderAdapter.normalize()`; new `RecordDraft` domain type;
+        malformed fields treated as missing, never crash — see
+        docs/16_MEMORY.md)
+-   [ ] T044--T045 provider (Google-specific)
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

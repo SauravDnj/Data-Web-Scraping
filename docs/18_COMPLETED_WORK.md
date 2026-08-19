@@ -902,3 +902,51 @@ Evidence:
 Next: T043 --- Google response mapper (convert raw Google Text Search
 items into the platform's normalized internal record representation —
 fixture-based, deterministic).
+
+### T043 --- Google response mapper
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/providers/google_maps/mapper.py`: `normalize_place()` — the
+    real Google implementation of `ProviderAdapter.normalize()`
+    (T040's Protocol), exhaustive over T041's `ALLOWED_FIELDS`.
+    `map_place_to_record_draft()` — combines it with job/project
+    context and a collection timestamp (T043 items 7/8), for the
+    worker (T060+) to call.
+-   New `app.domain.records.RecordDraft`: a `Record` minus
+    `id`/`canonical_key`/`created_at`/`updated_at` — canonical-key
+    computation is Stage 5 of `docs/08_DATA_PIPELINE_DEEP.md` (T052),
+    explicitly not this task's job.
+-   Field mapping: `displayName.text`→`name`,
+    `formattedAddress`→`formatted_address`, `location`→
+    `latitude`/`longitude` (both required together),
+    `businessStatus`/`priceLevel`→lowercased, `primaryType`,
+    `types`(filtered to strings), `rating`→float,
+    `userRatingCount`→int, `internationalPhoneNumber`→`phone_number`,
+    `websiteUri`→`website`, `currentOpeningHours`→
+    `open_now`/`weekday_descriptions` (flattened). `id`→
+    `provider_record_id`.
+-   **Malformed-input handling, the key design decision**: a field
+    present but wrong-typed is treated exactly like a missing field —
+    silently omitted, never coerced, never raises. Verified directly
+    with a fixture where every field is wrong-typed, asserting the
+    result is empty (`data={}`) with no exception.
+-   Provider/source reference: `GOOGLE_MAPS_TEXT_SEARCH_OPERATION`
+    constant documents what T054 should use as
+    `RecordProvenance.provider_operation`; `source_reference` is
+    documented as deliberately `None` (Places API (New) has no
+    separate reference field beyond `id`).
+-   First fixture-based test directory in the project
+    (`tests/fixtures/google_maps/`): `full_place.json` (every field
+    populated), `minimal_place.json` (only id/name),
+    `malformed_place.json` (every field wrong-typed). 10 new tests,
+    including the literal acceptance criterion (same fixture always
+    produces the same result).
+-   Verified locally: 243 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (71 source files).
+
+Next: T044 --- Provider error mapping (classify `GoogleMapsApiError`
+into T040's `ProviderErrorCategory` taxonomy, reconcile with T035's
+interim job-failure retry set, mark retryability explicitly).

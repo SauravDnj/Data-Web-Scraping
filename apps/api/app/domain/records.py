@@ -33,6 +33,26 @@ class Record:
 
 
 @dataclass(frozen=True)
+class RecordDraft:
+    """A `Record` before Stage 5 of `docs/08_DATA_PIPELINE_DEEP.md`
+    ("Canonical identity", T052) computes its `canonical_key` —
+    everything the pipeline knows before that stage. Produced by a
+    provider's response mapper (e.g.
+    `app.providers.google_maps.mapper.map_place_to_record_draft`,
+    T043) combined with job/project context and a collection
+    timestamp that a stateless `ProviderAdapter.normalize()` call has
+    no way to know on its own — attached by whoever orchestrates
+    collection (the worker, T060+)."""
+
+    project_id: int
+    job_id: int
+    provider: str
+    data: dict[str, Any]
+    collected_at: datetime
+    provider_record_id: str | None = None
+
+
+@dataclass(frozen=True)
 class RecordProvenance:
     """`collected_at` is required for the same reason as on Record —
     the schema has it NOT NULL."""

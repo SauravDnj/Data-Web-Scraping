@@ -69,10 +69,10 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T043 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T042
+T044 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T043
 complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T042 detail; this header is not
+dated sections further down for T030-T043 detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
 authoritative up-to-the-minute status.)
 
@@ -780,6 +780,72 @@ ever seems to have silently changed underfoot again.
 
 Verified locally: 233 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (70 source files).
+
+## Google response mapper (T043) — current task now T044
+
+`app/providers/google_maps/mapper.py`: `normalize_place(raw_item) ->
+NormalizedItem` — the real Google implementation of
+`ProviderAdapter.normalize()` (T040's Protocol). `map_place_to_
+record_draft(raw_item, *, project_id, job_id, collected_at) ->
+RecordDraft` — combines it with job/project context and a collection
+timestamp normalize() itself can't know (T043 items 7/8), for the
+worker (T060+) to call once it orchestrates a real run.
+
+**New domain type**: `app.domain.records.RecordDraft` — a `Record`
+minus `id`/`canonical_key`/`created_at`/`updated_at`, since canonical
+key computation is explicitly Stage 5 of
+`docs/08_DATA_PIPELINE_DEEP.md` (T052), not this task's job. Added
+next to `Record` in `app/domain/records.py`, not inside the
+`google_maps` subpackage — the shape is provider-agnostic even though
+today only `map_place_to_record_draft` produces one.
+
+**Field mapping is exhaustive over T041's `ALLOWED_FIELDS` exactly** —
+`displayName.text`→`name`, `formattedAddress`→`formatted_address`,
+`location.{latitude,longitude}`→same (both required together — a
+partial pair from a malformed response is treated as fully absent, not
+half-populated), `businessStatus`/`priceLevel`→lowercased,
+`primaryType`→`primary_type`, `types`→filtered to string entries only,
+`rating`→`float`, `userRatingCount`→`int`,
+`internationalPhoneNumber`→`phone_number`, `websiteUri`→`website`,
+`currentOpeningHours.{openNow,weekdayDescriptions}`→`open_now`/
+`weekday_descriptions` (flattened out of the nested object — nothing
+else from that object is kept). `id`→`provider_record_id` (top-level
+on `NormalizedItem`, not inside `data`).
+
+**Malformed-input handling, the key design decision (T043 item 10)**:
+a field present but of the wrong type is treated *exactly* like a
+missing field — silently omitted from `data`, never coerced, never
+raises. Verified directly:
+`test_malformed_response_never_crashes_and_produces_no_data` feeds a
+fixture where every single field has the wrong type and asserts the
+result is `NormalizedItem(provider_record_id=None, data={})` — no
+exception, no invented values. True schema *validation* (marking a
+response `warning`/`rejected`) is Stage 4 of the pipeline doc, a
+separate task (T051) — explicitly not this one's job, documented in
+the module docstring so a future edit doesn't accidentally conflate
+the two.
+
+**Provider/source reference (item 3)**: Places API (New) has no
+separate "reference" field distinct from `id` (the legacy Places API's
+did, dropped in "New") — `GOOGLE_MAPS_TEXT_SEARCH_OPERATION =
+"google_maps.places.text_search"` is what T054 (persistence) should
+record as `RecordProvenance.provider_operation`;
+`RecordProvenance.source_reference` should stay `None` for this
+operation, a deliberate documented decision, not a gap.
+
+**Fixture-based tests, per T043's own instruction** — new
+`tests/fixtures/google_maps/` directory (first fixtures directory in
+the project; not under `tests/unit/` or `tests/integration/` since
+fixtures are shared test data, not tests themselves):
+`full_place.json` (every handled field populated, real Google response
+shape), `minimal_place.json` (only `id`/`displayName` present),
+`malformed_place.json` (every field present but wrong-typed). 10 new
+tests (`tests/unit/test_google_maps_mapper.py`), including the literal
+acceptance criterion (`test_same_fixture_always_produces_the_same_
+result`) and the malformed-response test above.
+
+Verified locally: 243 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (71 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

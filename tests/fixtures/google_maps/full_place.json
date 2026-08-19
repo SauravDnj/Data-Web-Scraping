@@ -1,0 +1,26 @@
+{
+  "id": "ChIJrTLr-GyuEmsRBfy61i59si0",
+  "displayName": { "text": "Example Cafe", "languageCode": "en" },
+  "formattedAddress": "123 Example St, Surat, Gujarat 395001, India",
+  "location": { "latitude": 21.1702, "longitude": 72.8311 },
+  "businessStatus": "OPERATIONAL",
+  "primaryType": "cafe",
+  "types": ["cafe", "food", "point_of_interest", "establishment"],
+  "rating": 4.5,
+  "userRatingCount": 128,
+  "priceLevel": "PRICE_LEVEL_MODERATE",
+  "internationalPhoneNumber": "+91 98765 43210",
+  "websiteUri": "https://example-cafe.test/",
+  "currentOpeningHours": {
+    "openNow": true,
+    "weekdayDescriptions": [
+      "Monday: 8:00 AM - 8:00 PM",
+      "Tuesday: 8:00 AM - 8:00 PM",
+      "Wednesday: 8:00 AM - 8:00 PM",
+      "Thursday: 8:00 AM - 8:00 PM",
+      "Friday: 8:00 AM - 8:00 PM",
+      "Saturday: 9:00 AM - 9:00 PM",
+      "Sunday: 9:00 AM - 6:00 PM"
+    ]
+  }
+}

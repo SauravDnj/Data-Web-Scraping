@@ -1,0 +1,12 @@
+{
+  "id": 12345,
+  "displayName": "Not An Object",
+  "formattedAddress": null,
+  "location": { "latitude": "not-a-number", "longitude": 72.8311 },
+  "businessStatus": 42,
+  "types": "not-a-list",
+  "rating": "four point five",
+  "userRatingCount": "one hundred twenty eight",
+  "priceLevel": ["not", "a", "string"],
+  "currentOpeningHours": "not-an-object"
+}

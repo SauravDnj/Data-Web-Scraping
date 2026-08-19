@@ -7,14 +7,25 @@ being changed.
 
 ## Active task
 
-T043 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T042
+T044 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T043
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T043 has not started.
+None yet — T044 has not started.
+```
+
+## T043 files (complete — for reference)
+
+``` text
+apps/api/app/providers/google_maps/mapper.py       (new)
+apps/api/app/domain/records.py                     (modified — RecordDraft added)
+tests/fixtures/google_maps/full_place.json         (new)
+tests/fixtures/google_maps/minimal_place.json       (new)
+tests/fixtures/google_maps/malformed_place.json     (new)
+tests/unit/test_google_maps_mapper.py               (new)
 ```
 
 ## T042 files (complete — for reference)
