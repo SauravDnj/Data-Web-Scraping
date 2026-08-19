@@ -2,30 +2,36 @@
 
 ## Active task
 
-T011 --- Next.js environment.
+T012 --- MySQL local setup.
 
 ## Previous task
 
-T010 --- Python environment. COMPLETE. See `docs/18_COMPLETED_WORK.md`
-and `apps/api/pyproject.toml`.
+T011 --- Next.js environment. COMPLETE. See
+`docs/18_COMPLETED_WORK.md` and `apps/web/`.
 
 ## Goal
 
-Bootstrap the Next.js + TypeScript application under `apps/web`: strict
-TypeScript, basic layout, API base URL configuration, no secrets in
-client-side variables. Must satisfy the CI contract in
-`docs/16_MEMORY.md` (npm scripts `lint`, `typecheck`, optional `test`).
+Document and verify local MySQL setup: development database,
+application user with least-privilege permissions. Do not use root in
+application configuration.
 
 ## Not yet in scope
 
--   database implementation;
+-   database schema/migrations (T020/T021);
 -   Google provider calls;
 -   scraping;
 -   worker execution;
--   frontend business screens (only basic shell/layout).
+-   frontend business screens.
 
 ## Handoff
 
-After T011:
+After T012:
 
-T012 → T013 → T014 → T015
+T013 → T014 → T015
+
+## Known upcoming blocker
+
+T012 (MySQL) and T013 (Redis) need real local services. MySQL has a
+native Windows install; Redis does not (no official Windows build) —
+this needs a decision (WSL, Memurai, or another Redis-compatible
+option) before T013, flagged to the user per the earlier agreement.

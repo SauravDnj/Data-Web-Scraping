@@ -69,7 +69,41 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T011 --- Next.js environment. (T000, T001, T002, T010 complete.)
+T012 --- MySQL local setup. (T000, T001, T002, T010, T011 complete.)
+
+## Next.js environment (T011)
+
+`apps/web` scaffolded with `create-next-app` (Next.js 16.3.1, React
+19.2, App Router, TypeScript strict, Tailwind CSS v4, ESLint flat
+config extending `eslint-config-next`). Added on top: `typecheck`
+(`tsc --noEmit`) and `test`/`test:watch` (Vitest + React Testing
+Library, jsdom) npm scripts — `test` runs `vitest run` (single pass,
+not watch) specifically so CI's `npm test --if-present` doesn't hang.
+`no-console` (warn, allow warn/error) added to ESLint.
+
+Client/server config separation: `lib/api/config.ts` reads only
+`NEXT_PUBLIC_API_BASE_URL` (safe for the browser bundle);
+`lib/api/client.ts` is a typed fetch wrapper matching the
+`{data, request_id}` / `{error, request_id}` envelope from
+`docs/05_API_DESIGN.md`. The `server-only` package is installed for
+when a real server-only secret is needed later — no module uses it yet
+since none is needed at this stage.
+
+`app/error.tsx`, `app/global-error.tsx`, `app/loading.tsx` added
+(Next.js 16 file-convention error/loading UI — verified against the
+bundled `node_modules/next/dist/docs/` since Next 16 warns it may
+differ from training data; the error/loading conventions used here are
+unchanged from what's documented there).
+
+**Important**: Next.js only auto-loads `.env*` files from `apps/web/`
+itself, not the repo root — added `apps/web/.env.example` in addition
+to the root one (both list `NEXT_PUBLIC_API_BASE_URL`).
+
+Verified locally: clean `npm install`, `npm run lint` (pass),
+`npm run typecheck` (pass), `npm test` (2 passed), `npm run build`
+(production build succeeds), and `npm run dev` actually serves the
+page (curled http://localhost:3000, got 200 with expected content),
+then the dev server process was stopped.
 
 ## Python environment (T010)
 

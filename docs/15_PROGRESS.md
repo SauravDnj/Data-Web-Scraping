@@ -10,7 +10,7 @@ tests: 0% V1: 0%
   Phase                Status      Completion
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
-  1 Local foundation   IN_PROGRESS        40%
+  1 Local foundation   IN_PROGRESS        55%
   2 Database           PENDING             0%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
@@ -23,12 +23,13 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T011 --- Next.js environment.
+T012 --- MySQL local setup.
 
 ## Last verified milestone
 
-T010 --- Python environment complete and verified locally (clean
-install, pytest/ruff/mypy all pass). CI backend job is now live.
+T011 --- Next.js environment complete and verified locally (install,
+lint, typecheck, tests, production build, and a real dev-server request
+all pass). CI frontend job is now live.
 
 ## Rule
 

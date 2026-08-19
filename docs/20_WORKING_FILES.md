@@ -7,12 +7,13 @@ being changed.
 
 ## Active task
 
-T011 (T000, T001, T002, T010 complete — see docs/18_COMPLETED_WORK.md).
+T012 (T000, T001, T002, T010, T011 complete — see
+docs/18_COMPLETED_WORK.md).
 
 ## Active files
 
 ``` text
-None yet — T011 has not started.
+None yet — T012 has not started.
 ```
 
 ## Rule

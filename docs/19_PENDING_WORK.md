@@ -6,7 +6,7 @@
 -   [x] T001 coding standards
 -   [x] T002 CI baseline
 -   [x] T010 Python environment
--   [ ] T011 Node environment
+-   [x] T011 Node environment
 -   [ ] T012 MySQL
 -   [ ] T013 Redis
 -   [ ] T014 FastAPI

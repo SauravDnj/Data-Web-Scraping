@@ -132,3 +132,34 @@ Evidence:
     dependencies added.
 
 Next task: T011 --- Next.js environment.
+
+### T011 --- Next.js environment
+
+Status: COMPLETE
+
+Evidence:
+
+-   `apps/web` scaffolded (Next.js 16.3.1, TypeScript strict, Tailwind
+    v4, ESLint flat config + `no-console` rule, App Router).
+-   `typecheck`, `test`, `test:watch` npm scripts added; Vitest +
+    React Testing Library + jsdom configured
+    (`vitest.config.mts`/`vitest.setup.ts`); `test` runs once (not
+    watch) for CI compatibility.
+-   Root layout metadata updated; minimal placeholder home page
+    (no business logic); `app/error.tsx`, `app/global-error.tsx`,
+    `app/loading.tsx` added.
+-   `lib/api/config.ts` (client-safe `NEXT_PUBLIC_API_BASE_URL` only)
+    and `lib/api/client.ts` (typed fetch wrapper matching the API
+    envelope) establish the client/server config boundary; no
+    provider credentials, no direct MySQL access, no collection logic.
+-   `apps/web/.env.example` added (Next.js only reads `.env*` from its
+    own directory); root `.env.example` also updated.
+-   Verified locally end-to-end: `npm install` (clean), `npm run lint`
+    (pass), `npm run typecheck` (pass), `npm test` (2/2 passed),
+    `npm run build` (production build succeeds), `npm run dev` (dev
+    server actually served the page, verified via curl, then stopped).
+-   Fixed `apps/web/.gitignore` to allow-list `.env.example` (its
+    default `.env*` pattern would otherwise have excluded it, unlike
+    root `.gitignore`).
+
+Next task: T012 --- MySQL local setup.
