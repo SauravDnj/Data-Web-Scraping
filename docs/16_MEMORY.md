@@ -245,6 +245,32 @@ user's projects come back).
 Verified locally: 125 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (45 source files).
 
+## Configuration service (T034) — current task now T035
+
+`app/domain/provider_validation.py` (`ConfigValidationResult`,
+`ProviderConfigValidator` Protocol) resolves T034's circular
+dependency on T040 — see that file's docstring. `app/services/
+configs.py`: `ConfigurationService.create_version()` validates
+(generic provider-name check + delegated `validator.validate_config()`)
+strictly before creating any row, so an invalid config never becomes
+active. New `CollectionConfigRepository.set_active_version()` is the
+ONLY mutation ever applied to a `CollectionConfig` row after creation
+(`is_active` is a pointer; `provider`/`config_json`/`version` never
+change). `activate_version()` lets an existing historical version be
+reactivated without creating a new row. Reuses `ProjectService` for
+authorization rather than duplicating ownership checks.
+
+Test-only fakes in `tests/unit/fakes.py` — a real `FakeProvider`
+matching T040's full contract belongs at that task.
+
+11 new tests: deterministic version numbering, single-active-version
+invariant, old-version-content-provably-unmutated-when-active-changes,
+invalid config rejected (both generic and provider-delegated),
+`activate_version` pointer switch, cross-user access denial.
+
+Verified locally: 134 passed, 1 skipped (T012-gated), ruff clean,
+mypy clean (47 source files).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows
