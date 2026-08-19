@@ -7,14 +7,19 @@ being changed.
 
 ## Active task
 
-T027 (T000-T002, T010, T011, T014, T015, T020-T026 complete; T012/T013
-prepared but blocked on user action — see docs/18_COMPLETED_WORK.md).
-T027 needs real query plans — likely genuinely blocked until T012.
+T027 PARTIAL — genuinely blocked on T012 (EXPLAIN verification needs
+real MySQL). T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete. See docs/18_COMPLETED_WORK.md and database/INDEX_REVIEW.md.
+
+Paused here to check in with the user — this is a natural milestone
+(all local-foundation and DB-schema work that doesn't need live MySQL
+is done) and further tasks (T030+) increasingly benefit from T012/T013
+being resolved.
 
 ## Active files
 
 ``` text
-None yet — T027 has not started.
+None — awaiting user input on T012/T013 before resuming.
 ```
 
 ## Rule

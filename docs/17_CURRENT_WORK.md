@@ -2,26 +2,23 @@
 
 ## Active task
 
-T027 --- Database indexes and constraints.
+Paused, awaiting user input. T027 is PARTIAL (see
+`database/INDEX_REVIEW.md`) — genuinely blocked on real MySQL for
+EXPLAIN verification, confirmed by reading its literal prompt (not a
+false alarm like T023/T025/T026 turned out to be).
 
 ## Previous task
 
-T026 --- Operations database. COMPLETE, done without live MySQL. All 8
-database-schema tasks (T020-T026) are now done. See
-`docs/18_COMPLETED_WORK.md`.
+T026 --- Operations database. COMPLETE. All 8 database-schema tasks
+(T020-T026) are now done. See `docs/18_COMPLETED_WORK.md`.
 
-## Goal
+## Why paused here specifically
 
-Review query patterns across all tables and add only justified
-indexes/constraints, verified against real query plans.
-
-## This is very likely the actual hard stop
-
-Unlike T023/T025/T026 (flagged as possibly needing MySQL, turned out
-not to), T027 explicitly requires verifying with query plans — that
-cannot be done honestly against SQLite (different query planner,
-different index usage). Read the literal T027 prompt to confirm, but
-expect to report back to the user here rather than push through.
+This is the first task in the whole run (T000-T026) whose acceptance
+criteria cannot be honestly satisfied without live MySQL. Every prior
+"might need real MySQL" flag (T023, T025, T026) turned out to be
+overcautious once the literal prompt was checked — T027 is different,
+it explicitly says "Use EXPLAIN on representative synthetic queries."
 
 ## Not yet in scope
 
@@ -32,8 +29,11 @@ expect to report back to the user here rather than push through.
 
 ## Handoff
 
-After T027: T030 (domain models) onward. Return to T012/T013 — this
-time likely truly required before T027 can complete.
+Resume T027's EXPLAIN step once T012 is done. T030 (domain models) is
+pure Python and doesn't need MySQL, so it COULD proceed first if the
+user prefers not to wait — but T031+ (repository layer, services)
+increasingly benefit from real integration testing, so raising this
+with the user before choosing a direction.
 
 ## Open blockers (user action needed)
 

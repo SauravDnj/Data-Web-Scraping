@@ -32,8 +32,10 @@
         had never been linted — fixed 17 issues + extended CI)
 -   [x] T026 Operations database (exports/schedules/audit_logs, done
         without live MySQL — all 8 schema tasks now done except T027)
--   [ ] T027 indexes/constraints review (needs real query plans —
-        likely the actual hard stop)
+-   [~] T027 indexes/constraints review — PARTIAL. Query-to-index
+        mapping/FK review/uniqueness review done (see
+        database/INDEX_REVIEW.md). EXPLAIN verification against real
+        MySQL not done — genuinely blocked on T012.
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline

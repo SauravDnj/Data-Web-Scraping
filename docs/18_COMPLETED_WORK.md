@@ -425,3 +425,27 @@ Evidence:
 
 Next task: T012/T013 (blocked) then T027 --- Database indexes and
 constraints (needs real query plans — likely the actual hard stop).
+
+### T027 --- Database indexes and constraints
+
+Status: PARTIAL — genuinely blocked on T012
+
+Evidence:
+
+-   `database/INDEX_REVIEW.md`: complete query-to-index mapping (every
+    common query pattern → the index that serves it, most already
+    added incrementally in T022-T026), FK-index review (5 FK columns
+    deliberately left uncovered by an explicit index — InnoDB
+    auto-indexes them, adding one manually would be redundant),
+    uniqueness-constraint review (3 constraints, all justified),
+    non-obvious-index rationale (the two overlapping `jobs` indexes).
+-   **NOT done**: step 9, "Use EXPLAIN on representative synthetic
+    queries" — requires real MySQL; SQLite's query planner doesn't
+    predict MySQL's index usage. Not marked complete per the task
+    protocol's "must not mark complete until acceptance criteria are
+    verified."
+
+This is the real stopping point for the SQLite-substitution approach
+this project has used successfully through T020-T026 (2 real bugs
+found and fixed, 1 real test-coverage gap found and fixed). All 8
+schema tables exist; what remains needs live MySQL.

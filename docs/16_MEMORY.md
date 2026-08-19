@@ -69,10 +69,24 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T027 --- Database indexes and constraints. (T000-T002, T010, T011,
-T014, T015, T020-T026 complete. T012/T013 prepared but NOT verified —
-see below. T027 explicitly requires real query plans — likely the
-actual hard stop, unlike the false alarms at T025/T026.)
+T027 --- Database indexes and constraints. PARTIAL, genuinely blocked
+on T012. (T000-T002, T010, T011, T014, T015, T020-T026 fully complete.
+T012/T013 prepared but NOT verified — see below.)
+
+## T027 — the real hard stop
+
+Steps 1-8 and 10 of T027 done without MySQL: query-to-index mapping,
+FK-index review, uniqueness-constraint review, and rationale
+documentation — all in `database/INDEX_REVIEW.md`. Step 9 ("Use
+EXPLAIN on representative synthetic queries") genuinely requires real
+MySQL — SQLite's query planner doesn't predict MySQL's index usage.
+**Do not mark T027 complete until that step is done for real.**
+
+This closes out the run of tasks that could proceed without live
+infra. Everything from here (T030 domain models is fine, but T031 job
+state machine / T032 repository layer / T033+ will increasingly want
+real integration testing) benefits from T012 being resolved. Check
+back with the user before continuing further into T030+.
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        85%
+  2 Database           IN_PROGRESS        90%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,8 +23,8 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T027 --- Database indexes and constraints. (T012/T013 open, blocked on
-user action. T027 likely genuinely requires T012 to finish.)
+Paused, awaiting user input on T012/T013. T027 PARTIAL (blocked on
+real MySQL for EXPLAIN verification — see database/INDEX_REVIEW.md).
 
 ## Last verified milestone
 
