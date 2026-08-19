@@ -997,3 +997,49 @@ Evidence:
 Next: T045 --- Provider contract tests (assemble the complete
 fake-provider contract suite proving the whole Google adapter is
 testable without live credentials).
+
+### T045 --- Provider contract tests
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/providers/google_maps/provider.py`: `GoogleMapsProvider` — the
+    first concrete `ProviderAdapter` (T040's Protocol) in the
+    codebase, assembled purely by composition from T041
+    (`GoogleMapsConfigValidator`), T042 (`GoogleMapsClient`), T043
+    (`normalize_place`), and T044 (`classify_google_maps_error`).
+    `isinstance(provider, ProviderAdapter)` passes.
+-   `estimate()`/`health_check()` — no prior implementation existed
+    anywhere for either. Written honestly scoped: `estimate()` reports
+    the config's own bounded `max_results` (Google has no pre-call
+    usage-estimate endpoint); `health_check()` only confirms the
+    adapter was constructed with a credential, deliberately not
+    spending real API quota on a live probe.
+-   **Found and fixed a real robustness gap** in T042's
+    `GoogleMapsClient.search_text()` while writing the malformed-
+    response test: a top-level malformed response (`places` not a
+    list) would have iterated a string's characters instead of failing
+    gracefully. Fixed with type checks on both `places` and each
+    individual `place` entry, and tightened `nextPageToken` handling
+    the same way.
+-   New fixtures (`tests/fixtures/google_maps/`): full search-response
+    shapes (valid/empty/malformed/paginated) and realistic Google
+    error bodies (quota/authentication/transient).
+-   15 new tests, one per T045 IMPLEMENT item, plus Protocol-
+    satisfaction proof and coverage for the two methods this task
+    introduced.
+-   Verified locally: 280 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (73 source files).
+
+**Phase 4 (Provider) is now fully complete**: T040 (interface) → T041
+(Google config validation) → T042 (Google HTTP client) → T043 (Google
+response mapping) → T044 (Google error classification) → T045
+(assembled + contract-tested). Every `ProviderAdapter` method has a
+real, tested Google implementation — no live network call made against
+Google anywhere in this codebase yet, which is correct: nothing in the
+task list asks for that before the worker (T060+) actually needs it.
+
+Next: T050 --- Normalization pipeline (Stage 3 of the data pipeline —
+provider-agnostic, deterministic value transformations on top of
+T043's already-mapped output).

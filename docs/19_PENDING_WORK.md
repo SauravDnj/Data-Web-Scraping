@@ -82,7 +82,10 @@
         real `ProviderAdapter.classify_error()`; extended
         `ProviderError` with retryable/diagnostic fields; reconciled
         `job_errors` with the real taxonomy — see docs/16_MEMORY.md)
--   [ ] T045 Provider contract tests
+-   [x] T045 Provider contract tests (`GoogleMapsProvider` assembled —
+        first concrete `ProviderAdapter`; found/fixed a real
+        malformed-response gap in T042's client — see
+        docs/16_MEMORY.md). **Phase 4 (Provider) fully complete.**
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

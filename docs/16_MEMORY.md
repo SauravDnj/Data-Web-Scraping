@@ -69,12 +69,12 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T045 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T044
-complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T044 detail; this header is not
-updated inline each time, check docs/17_CURRENT_WORK.md for the
-authoritative up-to-the-minute status.)
+T050 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045
+complete — Phase 4 Provider now fully done. T012/T013 prepared but NOT
+verified — see below. See the dated sections further down for
+T030-T045 detail; this header is not updated inline each time, check
+docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -911,6 +911,75 @@ yield the same retry decision).
 
 Verified locally: 265 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (72 source files).
+
+## Provider contract tests (T045) — current task now T050, Phase 4 (Provider) now complete
+
+`app/providers/google_maps/provider.py`: `GoogleMapsProvider` — the
+first, and so far only, concrete `ProviderAdapter` (T040's Protocol)
+in the codebase, assembled purely by composition from every piece
+built T041-T044 (`validate_config`→`GoogleMapsConfigValidator`,
+`collect`→`GoogleMapsClient.search_text`,
+`normalize`→`normalize_place`,
+`classify_error`→`classify_google_maps_error`). No new business logic
+of its own. `isinstance(provider, ProviderAdapter)` passes — concrete
+proof the whole chain genuinely satisfies the Protocol, not just each
+piece in isolation.
+
+**`estimate()`/`health_check()` had no implementation anywhere before
+this** (flagged as an open question in T044's own memory entry) —
+written here, honestly scoped rather than invented: `estimate()`
+reports exactly the config's own `max_results` (already bounded by
+T041's `MAX_RESULT_COUNT`) since Google's Places API (New) has no
+pre-call usage-estimate endpoint (verified, not assumed);
+`health_check()` only confirms the adapter was constructed with a
+credential — it deliberately does NOT spend real API quota on a live
+probe call just to answer a routine health check, since no task asked
+for that and it would be real, ongoing cost for no task-driven reason.
+
+**Found and fixed a real robustness gap in T042's `GoogleMapsClient.
+search_text()` while writing the "malformed response" test (T045 item
+4)**: a top-level malformed response (`places` present but not a list,
+e.g. a string) would have made `for place in places` iterate the
+string's *characters* instead of failing gracefully — T043's "never
+invent, never crash" principle wasn't actually applied at the
+collection layer, only at the per-item mapping layer. Fixed:
+`places` is now type-checked (treated as empty if not a list), and
+each `place` entry is type-checked too (skipped if not a dict) — same
+principle, now applied consistently at both layers.
+`nextPageToken` handling tightened the same way (empty-string/
+non-string token now correctly stops pagination, matching the
+original intent that a slightly looser check had drifted from).
+
+**New fixtures** (`tests/fixtures/google_maps/`, extending T043's
+per-place fixtures with full search-response and error-response
+shapes): `text_search_response_{valid,empty,malformed}.json`,
+`text_search_response_page{1,2}.json` (pagination), `error_
+{quota,authentication,transient}.json` (realistic Google error bodies,
+matching T044's classifier inputs).
+
+15 new tests
+(`tests/unit/test_google_maps_provider_contract.py`) — one per T045
+IMPLEMENT item (valid/empty/malformed/paginated collection, quota/
+authentication/transient error classification with retry-count
+assertions, normalization delegation, provenance survival through the
+full collect→normalize chain, deterministic mapping), plus the
+Protocol-satisfaction proof and `validate_config`/`estimate`/
+`health_check`/unknown-exception-fallback coverage for the two methods
+this task itself introduced.
+
+**Phase 4 (Provider) is now fully complete** — T040 (interface) →
+T041 (Google config validation) → T042 (Google HTTP client) → T043
+(Google response mapping) → T044 (Google error classification) → T045
+(assembled + contract-tested). Every method of `ProviderAdapter` has a
+real, tested Google implementation. Still true and unchanged: no real
+network call has ever been made against Google in this codebase — the
+next genuine "does this actually work against the live API" check
+happens whenever the user is ready to supply a real
+`GOOGLE_MAPS_API_KEY` and run a manual smoke test; nothing in the
+documented task list currently asks for that explicitly before T050+.
+
+Verified locally: 280 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (73 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

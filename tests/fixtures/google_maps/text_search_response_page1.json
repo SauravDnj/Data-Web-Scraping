@@ -1,0 +1,7 @@
+{
+  "places": [
+    { "id": "page1-place-1", "displayName": { "text": "Page One Cafe" } },
+    { "id": "page1-place-2", "displayName": { "text": "Page One Diner" } }
+  ],
+  "nextPageToken": "page-2-token"
+}

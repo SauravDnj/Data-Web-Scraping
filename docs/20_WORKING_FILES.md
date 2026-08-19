@@ -7,14 +7,31 @@ being changed.
 
 ## Active task
 
-T045 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T044
+T050 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
-prepared but blocked on user action).
+prepared but blocked on user action). Phase 4 (Provider) fully
+complete as of T045.
 
 ## Active files
 
 ``` text
-None yet — T045 has not started.
+None yet — T050 has not started.
+```
+
+## T045 files (complete — for reference)
+
+``` text
+apps/api/app/providers/google_maps/provider.py              (new)
+apps/api/app/providers/google_maps/client.py                (modified — malformed-response robustness fix)
+tests/fixtures/google_maps/text_search_response_valid.json  (new)
+tests/fixtures/google_maps/text_search_response_empty.json  (new)
+tests/fixtures/google_maps/text_search_response_malformed.json (new)
+tests/fixtures/google_maps/text_search_response_page1.json  (new)
+tests/fixtures/google_maps/text_search_response_page2.json  (new)
+tests/fixtures/google_maps/error_quota.json                 (new)
+tests/fixtures/google_maps/error_authentication.json        (new)
+tests/fixtures/google_maps/error_transient.json             (new)
+tests/unit/test_google_maps_provider_contract.py            (new)
 ```
 
 ## T044 files (complete — for reference)

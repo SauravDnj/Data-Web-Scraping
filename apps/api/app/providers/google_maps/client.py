@@ -99,7 +99,13 @@ class GoogleMapsClient:
         `config.get("max_results", MAX_RESULT_COUNT)` — `config` is
         assumed already validated (T041); this method does not
         re-validate it. Lazy: a caller that only consumes the first
-        few items never pays for the later pages."""
+        few items never pays for the later pages.
+
+        A malformed top-level response (`places` missing or not a
+        list, or containing a non-object entry) is treated as if that
+        page were empty/that entry absent — never raises, matching
+        T043's "never invent, never crash" treatment of malformed
+        provider data, applied here at the collection layer too."""
         target = config.get("max_results", MAX_RESULT_COUNT)
         field_mask = _build_field_mask(config["fields"])
         page_token: str | None = None
@@ -112,16 +118,26 @@ class GoogleMapsClient:
             )
             payload = self._request_page(body, field_mask)
 
-            places = payload.get("places", [])
+            places = payload.get("places")
+            if not isinstance(places, list):
+                places = []
+
             for place in places:
+                if not isinstance(place, dict):
+                    continue
                 if yielded >= target:
                     return
                 yield place
                 yielded += 1
 
-            page_token = payload.get("nextPageToken")
-            if not page_token or not places:
+            next_page_token = payload.get("nextPageToken")
+            if (
+                not isinstance(next_page_token, str)
+                or not next_page_token
+                or not places
+            ):
                 return
+            page_token = next_page_token
 
     def _request_page(self, body: dict[str, Any], field_mask: str) -> dict[str, Any]:
         headers = {

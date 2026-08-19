@@ -1,0 +1,20 @@
+{
+  "places": [
+    {
+      "id": "ChIJrTLr-GyuEmsRBfy61i59si0",
+      "displayName": { "text": "Example Cafe", "languageCode": "en" },
+      "formattedAddress": "123 Example St, Surat, Gujarat 395001, India",
+      "location": { "latitude": 21.1702, "longitude": 72.8311 },
+      "rating": 4.5,
+      "userRatingCount": 128
+    },
+    {
+      "id": "ChIJanotherPlaceId456",
+      "displayName": { "text": "Example Diner", "languageCode": "en" },
+      "formattedAddress": "456 Sample Ave, Surat, Gujarat 395001, India",
+      "location": { "latitude": 21.1755, "longitude": 72.8342 },
+      "rating": 4.1,
+      "userRatingCount": 56
+    }
+  ]
+}

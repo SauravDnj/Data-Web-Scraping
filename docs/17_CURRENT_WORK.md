@@ -2,42 +2,45 @@
 
 ## Active task
 
-T045 --- Provider contract tests.
+T050 --- Normalization pipeline.
 
 ## Previous task
 
-T044 --- Provider error mapping. COMPLETE —
-`app/providers/google_maps/errors.py`: `classify_google_maps_error()`
-(the real `ProviderAdapter.classify_error()` implementation), mapping
-Google's `error.status` (+ HTTP status fallback) into T040's
-`ProviderErrorCategory`. Extended `ProviderError` itself with
-mandatory `retryable` + diagnostic `http_status_code`/
-`provider_status` fields; added `default_retryable_for_category()`.
-Reconciled `app.domain.job_errors` with the new taxonomy (`Job.
-error_code` now holds a `ProviderErrorCategory` value or
-`"persistence"`), replacing T035's provisional
-`"transient_network"`/`"rate_limit"` codes — updated the one existing
-test that used the old value. 22 new tests. T043 --- Google response
-mapper, T042 --- Google client, T041 --- Google configuration, T040 ---
-Provider interface, T039 --- Authorization, T038 --- Authentication
-all complete before it. See `docs/18_COMPLETED_WORK.md`.
+T045 --- Provider contract tests. COMPLETE — `app/providers/
+google_maps/provider.py`: `GoogleMapsProvider`, the first concrete
+`ProviderAdapter` in the codebase, assembled purely by composition
+from T041-T044 (`estimate()`/`health_check()` written here, honestly
+scoped — no pre-call usage estimate exists on Google's side, and
+`health_check()` doesn't spend real quota on a live probe). **Found
+and fixed a real robustness gap in T042's client**: a malformed
+top-level response could have made `search_text()` iterate a string's
+characters instead of failing gracefully — hardened, matching T043's
+"never invent, never crash" principle applied consistently at the
+collection layer too. 15 new tests
+(`tests/unit/test_google_maps_provider_contract.py`), one per T045
+IMPLEMENT item, plus new fixtures under `tests/fixtures/google_maps/`.
+**Phase 4 (Provider) is now fully complete** — T040-T045 all done,
+every `ProviderAdapter` method has a real, tested Google
+implementation. T044 --- Provider error mapping, T043 --- Google
+response mapper, T042 --- Google client, T041 --- Google
+configuration, T040 --- Provider interface, T039 --- Authorization,
+T038 --- Authentication all complete before it. See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Assemble a complete, fake-based `ProviderAdapter` contract test suite
-(read `docs/T045_PROMPT.md` before assuming scope) — synthetic
-fixtures, valid/empty/malformed collection responses, pagination,
-quota/authentication/transient-error scenarios, normalization,
-provenance, deterministic mapping — proving the whole Google adapter
-(config validation T041 + HTTP client T042 + response mapper T043 +
-error classifier T044, composed together) is testable end-to-end
-without any live Google credentials. This is very likely where a
-single `GoogleMapsProvider` class finally gets assembled satisfying
-every method of T040's `ProviderAdapter` Protocol (`validate_config`,
-`collect`, `normalize`, `classify_error` all already have real
-implementations spread across T041-T044; `estimate()`/`health_check()`
-still have no real implementation anywhere — check whether T045 is
-where those get written, or whether they remain open after it).
+Build the provider-agnostic normalization pipeline stage (read
+`docs/T050_PROMPT.md` before assuming scope) — Stage 3 of
+`docs/08_DATA_PIPELINE_DEEP.md`, distinct from T043's Google-specific
+field mapping: pure, deterministic transformations applied to a
+`NormalizedItem`'s already-mapped `data` (whitespace trimming, safe
+Unicode normalization, URL normalization, numeric/timestamp/category
+normalization) that any current or future provider's output passes
+through uniformly, not duplicated per adapter. Must never invent a
+value for something genuinely missing (T050's own explicit
+instruction, echoing T043's same principle at this next stage). Unit
+tests per transformation + regression fixtures; acceptance is strict
+determinism (same input → identical output).
 
 ## Not yet in scope
 
