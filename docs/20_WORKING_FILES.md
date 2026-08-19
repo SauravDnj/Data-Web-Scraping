@@ -7,15 +7,31 @@ being changed.
 
 ## Active task
 
-T054 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T053 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
-T012/T013 prepared but blocked on user action). Phase 4 (Provider)
-fully complete as of T045; Phase 5 (Data pipeline) in progress.
+T060 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
+T012/T013 prepared but blocked on user action). Phase 4 (Provider) and
+Phase 5 (Data pipeline) both fully complete. Phase 6 (Worker) starting.
 
 ## Active files
 
 ``` text
-None yet — T054 has not started.
+None yet — T060 has not started.
+```
+
+## T055 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/metrics.py                          (new)
+apps/api/app/repositories/jobs.py                          (modified — update_counters added)
+tests/unit/test_pipeline_metrics.py                        (new)
+tests/integration/test_pipeline_metrics_transaction.py     (new)
+```
+
+## T054 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/persist.py               (new)
+tests/integration/test_pipeline_persist.py     (new)
 ```
 
 ## T053 files (complete — for reference)

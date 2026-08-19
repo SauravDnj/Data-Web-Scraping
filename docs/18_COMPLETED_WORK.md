@@ -1197,3 +1197,89 @@ Evidence:
 Next: T054 --- Transactional persistence (atomic batch writes,
 provenance storage, rollback-safe, counters incremented only after
 success).
+
+### T054 --- Transactional persistence
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/persist.py`: `persist_batch()`/`_persist_one()` —
+    wraps each T053 dedup decision in its own SAVEPOINT
+    (`session.begin_nested()`), so one record's failure rolls back
+    only that record, never siblings already written earlier in the
+    same outer transaction — the literal reading of "a failed
+    transaction does not leave partial inconsistent state" at record
+    granularity, matching docs/08's "never hide failures"/
+    `partially_completed` philosophy rather than batch-wide
+    all-or-nothing.
+-   **Found and fixed a real correctness gap in T053**: its
+    `DedupSummary` counters incremented right after a repository
+    `flush()`, not a `commit()` — if a later record in the same outer
+    transaction failed with no per-record isolation, those counters
+    would have claimed successes a subsequent rollback then silently
+    undid. T054's SAVEPOINT is what makes each record's own success
+    durable within the still-open outer transaction.
+-   Provenance stored only for actual writes (CREATED/UPDATED);
+    `provider_operation` is caller-supplied, zero Google-specific
+    imports in this module.
+-   Constraint-conflict tests use a `_StaleCheckRepository` wrapper
+    whose `get_by_canonical_key` always returns `None` (simulating a
+    concurrent insert) around the REAL repository, so the actual T025
+    `UniqueConstraint` raises the `IntegrityError`, not a mock.
+-   Tests placed in `tests/integration/` (item 7's explicit ask) —
+    exercise a full commit-at-the-end lifecycle, re-opening a fresh
+    session after commit to prove durability.
+-   8 new tests: create, update-vs-skip, provenance-for-writes-only,
+    constraint-conflict-marked-FAILED-not-raised, the core "failed
+    record doesn't roll back earlier successes" proof, and
+    summary-matches-committed-row-count.
+-   Verified locally: 367 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (79 source files).
+
+Next: T055 --- Pipeline metrics (accurate job/pipeline counters —
+work units, records created/updated/rejected, retries — atomic with
+the records they describe).
+
+### T055 --- Pipeline metrics
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/metrics.py`: `compute_job_counters()` aggregates
+    T051's `ValidationResult`s and T054's `PersistOutcome`s into
+    `JobCounters` (T024's existing shape). `count_job_run_attempts()`
+    surfaces "retries" from the already-existing `JobRun.attempt`
+    field rather than inventing a new concept or schema change. New
+    `JobRepository.update_counters()`.
+-   Documented bucket-mapping decision: a DB-conflict `FAILED` outcome
+    counts toward `failed_units` but deliberately NOT
+    `records_rejected` (reserved for Stage-4 quality rejections) —
+    conflating the two would make `records_rejected` an inaccurate
+    quality signal. `total_units == successful_units + failed_units +
+    skipped_units` always holds by construction, verified directly.
+-   Atomicity (the literal acceptance criterion — "counters never
+    claim success for uncommitted records") proven by an integration
+    test committing counters and records together, then re-reading
+    from a fresh post-commit session.
+-   **Found and fixed a real pytest collision** while adding the
+    integration test: `tests/unit/test_pipeline_metrics.py` and a
+    same-named `tests/integration/` file collided at collection
+    (no `__init__.py` in either directory) — renamed the integration
+    file to `test_pipeline_metrics_transaction.py`.
+-   15 new tests (10 pure aggregation + 1 transactional-atomicity
+    integration test), one per T055 test scenario (all-success,
+    partial-failure, retry, duplicate, rejected-record) plus the
+    `total_units` invariant.
+-   Verified locally: 378 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 source files).
+
+**Phase 5 (Data pipeline) is now fully complete**: T050 (normalize) →
+T051 (validate) → T052 (canonical identity) → T053 (deduplicate) →
+T054 (persist) → T055 (metrics) — every stage of
+`docs/08_DATA_PIPELINE_DEEP.md` implemented, tested, provider-agnostic.
+
+Next: T060 --- Redis queue (first task of Phase 6, Worker — queue
+interface, Redis implementation, minimal job-ID-only payload, MySQL
+remains the system of record).

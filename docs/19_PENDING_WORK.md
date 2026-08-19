@@ -102,7 +102,14 @@
         within/across-page + against-existing via a real repository
         call; new `RecordRepository.update_collected_data()`;
         DB-constraint test — see docs/16_MEMORY.md)
--   [ ] T054--T055 pipeline
+-   [x] T054 Transactional persistence (`app/pipeline/persist.py` —
+        per-record SAVEPOINT isolation, provenance storage, found and
+        fixed a real counter-durability gap in T053 — see
+        docs/16_MEMORY.md)
+-   [x] T055 Pipeline metrics (`app/pipeline/metrics.py` —
+        `compute_job_counters()`, new `JobRepository.
+        update_counters()`, atomic with record writes — see
+        docs/16_MEMORY.md). **Phase 5 (Data pipeline) fully complete.**
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations

@@ -2,39 +2,44 @@
 
 ## Active task
 
-T054 --- Transactional persistence.
+T060 --- Redis queue (first task of Phase 6, Worker).
 
 ## Previous task
 
-T053 --- Deduplication. COMPLETE — `app/pipeline/deduplicate.py`:
-`deduplicate_within_batch()` (pure, streaming, within+across pages) +
-`resolve_against_existing()` (DB-touching, create/update/skip) +
-`deduplicate_batch()` (composes both, tracks `DedupSummary`). New
-`RecordRepository.update_collected_data()` (T032 never needed an
-update path before now). Default policy: `update_existing=True`
-(repeat collections refresh stale data), fully supports
-`update_existing=False` too. Database-constraint test proves the T025
-`UniqueConstraint` is the final safety net independent of this
-module's own logic. 11 new tests. T052 --- Canonical identity and all
-of T050-T051/Phase 4 complete before it. See
-`docs/18_COMPLETED_WORK.md`.
+T055 --- Pipeline metrics. COMPLETE — `app/pipeline/metrics.py`:
+`compute_job_counters()` aggregates T051 validation + T054 persist
+outcomes into `JobCounters` (T024's existing shape, now filled in for
+real); `count_job_run_attempts()` surfaces "retries" from `JobRun.
+attempt` rather than inventing a new concept. New `JobRepository.
+update_counters()`. Bucket mapping is a documented design decision
+(DB-conflict FAILED ≠ quality-rejected, kept as separate counters).
+Atomicity proven by committing counters + records in the same
+transaction, then re-reading from a fresh session. 15 new tests. Hit
+and fixed a real pytest module-basename collision between the new
+`tests/unit/` and `tests/integration/` files (renamed the integration
+one). **Phase 5 (Data pipeline) is now fully complete** — T050 through
+T055, every stage of `docs/08_DATA_PIPELINE_DEEP.md` implemented and
+tested. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Make database writes reliable (read `docs/T054_PROMPT.md` before
-assuming scope) — Stage 7 of `docs/08_DATA_PIPELINE_DEEP.md`: wrap
-T053's per-record insert/update decisions in a real atomic
-transaction (a whole batch succeeds or rolls back together, matching
-`docs/08`'s "never hide failures" principle — partial success must be
-reported honestly, e.g. `partially_completed`, not silently swept
-under a bare "completed"), store `RecordProvenance` rows (genuinely
-new — T043 left `GOOGLE_MAPS_TEXT_SEARCH_OPERATION` specifically for
-this), increment created/updated/rejected counters only after a
-successful commit (never optimistically before), handle DB constraint
-conflicts gracefully (e.g. a concurrent-write race past the app-level
-`get_by_canonical_key` check), and add rollback-behavior tests
-proving a failed transaction leaves no partial, inconsistent state —
-T054's literal acceptance criterion.
+Implement the Redis-backed job queue (read `docs/T060_PROMPT.md`
+before assuming scope) — first task of Phase 6 (Worker). Define a
+generic queue interface (Protocol, matching every repository this
+project has built), a real Redis implementation (`redis-py`, already a
+dependency since T014), enqueue/dequeue/acknowledgement, worker-failure
+handling, and a minimal payload — **only the job ID**, never job
+details (those stay in MySQL, the system of record; Redis is
+coordination-only per docs/16_MEMORY.md's technology decisions).
+Acceptance: a queued job can be delivered to a worker, and Redis loss
+must not erase the durable job record (`Job` rows in MySQL are
+unaffected by Redis being wiped). **T013 (Redis) is still not
+locally verified** (no live Redis instance — Memurai vs. skip still
+undecided by the user, WSL ruled out) — decide how to test this
+task's queue logic without one before writing it (a real, protocol-
+faithful in-memory Redis substitute, matching this project's
+SQLite-for-MySQL testing strategy, is worth investigating before
+resorting to a hand-rolled fake).
 
 ## Not yet in scope
 

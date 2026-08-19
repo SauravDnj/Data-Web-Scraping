@@ -18,6 +18,8 @@ class JobRepository(Protocol):
 
     def update_status(self, job_id: int, target: JobStatus) -> Job: ...
 
+    def update_counters(self, job_id: int, counters: JobCounters) -> Job: ...
+
     def list_for_project(
         self,
         project_id: int,
@@ -94,6 +96,28 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
         if row is None:
             raise LookupError(f"Job {job_id} does not exist.")
         row.status = transition(JobStatus(row.status), target)
+        self._session.flush()
+        return self._to_domain(row)
+
+    def update_counters(self, job_id: int, counters: JobCounters) -> Job:
+        """T055's write path — always called from within the same
+        `session_scope()` transaction as the batch's own record
+        writes (T054's `persist_batch()`), so the counters commit or
+        roll back together with the records they describe. Never a
+        separate, later transaction — that would risk the counters
+        surviving a rollback of the records themselves, or vice versa,
+        violating T055's "never claim success for uncommitted records"
+        acceptance criterion."""
+        row = self._session.get(JobRow, job_id)
+        if row is None:
+            raise LookupError(f"Job {job_id} does not exist.")
+        row.total_units = counters.total_units
+        row.successful_units = counters.successful_units
+        row.failed_units = counters.failed_units
+        row.skipped_units = counters.skipped_units
+        row.records_created = counters.records_created
+        row.records_updated = counters.records_updated
+        row.records_rejected = counters.records_rejected
         self._session.flush()
         return self._to_domain(row)
 
