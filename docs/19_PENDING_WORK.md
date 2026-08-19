@@ -19,8 +19,10 @@
 -   [x] T020 SQLAlchemy foundation (done without live MySQL — see
         docs/16_MEMORY.md; verified against SQLite + a deterministic
         connection-error test)
--   [ ] T021--T027 database (T021 needs a real MySQL connection to run
-        an actual migration — likely blocked on T012)
+-   [x] T021 Alembic foundation (done without live MySQL, same
+        reasoning as T020 — see docs/16_MEMORY.md)
+-   [ ] T022--T027 database (first real business tables — will need
+        real MySQL to verify; likely blocked on T012)
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline

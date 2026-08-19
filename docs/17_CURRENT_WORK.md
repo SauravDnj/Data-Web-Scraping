@@ -2,33 +2,32 @@
 
 ## Active task
 
-T021 --- Alembic foundation.
+T022 --- Identity database.
 
 ## Previous task
 
-T020 --- SQLAlchemy foundation. COMPLETE (verified against SQLite + a
-deterministic connection-error test, no live MySQL needed — see
-docs/16_MEMORY.md). See `docs/18_COMPLETED_WORK.md` and
-`apps/api/app/db/session.py`.
+T021 --- Alembic foundation. COMPLETE. Turned out solvable without
+live MySQL too — the migration harness itself was verifiable against
+a temporary SQLite file (empty schema so far, so dialect didn't
+matter). See `docs/18_COMPLETED_WORK.md` and
+`database/migrations/env.py`.
 
 ## Goal
 
-Configure Alembic and verify a clean migration against a real
-database.
+Create the identity/users table and its first real migration.
 
-## Likely hard stop
+## Likely actual hard stop
 
-Alembic's whole point is running real migrations. Unlike T020, there's
-probably no honest way to verify "migration applies cleanly" without
-an actual reachable MySQL — T012 needs to land first. Will attempt to
-get as far as possible (Alembic config/env.py wiring, migration
-scaffolding) and flag clearly if/when real execution is required to
-call it done.
+T022 is the first task creating real business schema. Its acceptance
+criteria will presumably want a real migration verified against a
+real database, and there's no more "no schema yet, dialect doesn't
+matter" escape hatch like T020/T021 had. This is probably where
+progress genuinely pauses for T012, though will read the exact T022
+prompt before concluding that.
 
 ## Not yet in scope
 
--   actual table schema (T022-T026 create identity/project/job/record/
-    ops tables);
+-   project/job/record/ops tables (T023-T026);
 -   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
@@ -36,8 +35,8 @@ call it done.
 
 ## Handoff
 
-After T021: T022 (identity DB) → T023 → ... all of which also need
-real MySQL. Return to T012/T013 as soon as possible.
+After T022: T023 → ... all needing real MySQL. Return to T012/T013 as
+soon as possible.
 
 ## Open blockers (user action needed)
 

@@ -69,8 +69,9 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T021 --- Alembic foundation. (T000-T002, T010, T011, T014, T015, T020
-complete. T012/T013 prepared but NOT verified — see below.)
+T022 --- Identity database. (T000-T002, T010, T011, T014, T015, T020,
+T021 complete. T012/T013 prepared but NOT verified — see below. T022
+likely needs real MySQL to fully verify — first real business table.)
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
@@ -205,6 +206,51 @@ as T012's own regression test. Run it after MySQL is set up to get
 genuine MySQL-dialect confirmation, not just the SQLite proof above.
 
 Verified locally: 18 passed, 1 skipped (as expected), ruff/mypy clean.
+
+## Alembic foundation (T021) — also done without live MySQL
+
+`apps/api/alembic.ini`: `sqlalchemy.url` deliberately blank (no
+credential-shaped value, real or placeholder);
+`database/migrations/env.py` sets it from `DATABASE_URL` via
+`get_settings()` **only if not already configured** — this is what
+lets `tests/integration/test_migrations.py` point Alembic at a
+per-test temporary SQLite file via `Config.set_main_option(...)`
+without needing `APP_SECRET`/`REDIS_URL` dummy env vars at all. Don't
+"simplify" that `if not config.get_main_option(...)` guard away — it's
+the whole reason the test doesn't need Settings() to succeed.
+
+`script_location = %(here)s/../../database/migrations` (relative to
+`alembic.ini`'s own location, so it resolves regardless of CWD).
+`target_metadata = Base.metadata` from `app.db.base` — currently empty
+(matches T020; real tables land T022+, at which point `env.py`'s
+comment marks where to import those model modules so autogenerate
+sees them).
+
+Initial migration `3c36a83992e1_initial_no_tables_yet.py` is
+deliberately a no-op (empty `upgrade()`/`downgrade()`) — proves the
+Alembic harness itself (revision tracking, `alembic_version` table)
+without inventing schema ahead of its task. Verified both manually
+(`alembic upgrade head` → `alembic current` → `alembic downgrade base`
+→ `alembic current`, against a temp SQLite file) and via the automated
+`test_alembic_upgrade_and_downgrade_from_empty_database` test, which
+asserts the `alembic_version` table directly.
+
+**Scope boundary, deliberate**: `database/migrations/versions/*.py`
+and `script.py.mako` are Alembic-generated and excluded from our
+ruff/mypy enforcement (reformatting historical migrations after the
+fact is bad practice anyway); `env.py` is hand-written and IS kept
+ruff-clean (uses `../../database/migrations/env.py` as a target from
+`apps/api/` — same trick as `workers/`).
+
+**Still pending real MySQL**: this proves the migration *harness*
+works, not that a real MySQL-dialect migration applies cleanly. Once
+T012 lands, run `alembic upgrade head` against the real
+`google_data_platform` database as a final confirmation — trivial
+since there's still no real schema, but worth doing before T022 adds
+one.
+
+Verified locally: 19 passed, 1 skipped (the pre-existing T012-gated
+MySQL test), ruff/mypy clean.
 
 ## Next.js environment (T011)
 

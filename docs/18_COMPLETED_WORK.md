@@ -269,3 +269,33 @@ Evidence:
 Next task: T021 --- Alembic foundation (this one genuinely needs a
 live MySQL connection to run a real migration against — likely the
 next hard stop pending T012).
+
+### T021 --- Alembic foundation
+
+Status: COMPLETE
+
+Evidence:
+
+-   `apps/api/alembic.ini` (blank `sqlalchemy.url`, no credentials),
+    `database/migrations/env.py` (URL from `DATABASE_URL` unless
+    already configured — the latter is what makes this testable
+    without live MySQL), `target_metadata = Base.metadata`.
+-   Initial no-op migration
+    (`3c36a83992e1_initial_no_tables_yet.py`) proves the harness
+    without inventing schema ahead of T022+.
+-   `tests/integration/test_migrations.py`: automated
+    upgrade-head/downgrade-base round-trip against a temporary SQLite
+    file, asserting the `alembic_version` table directly.
+-   `database/migrations/README.md`, `database/README.md` document
+    the upgrade/downgrade/history/revision commands.
+-   Verified locally: manual round-trip
+    (upgrade → current → downgrade → current) against a temp SQLite
+    DB, plus the automated test; full suite 19 passed, 1 skipped
+    (T012-gated), ruff/mypy clean.
+-   Same honest caveat as T020: this proves the migration harness, not
+    a real MySQL-dialect migration — trivial to re-confirm once T012
+    lands since there's still no real schema yet.
+
+Next task: T012/T013 (blocked on user action) then T022 --- Identity
+database (first real business table — will need real MySQL to fully
+verify per its own acceptance criteria, unlike T020/T021).

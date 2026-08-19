@@ -1,4 +1,7 @@
 # database
 
-Alembic migrations and seed data. Populated starting T020/T021 (SQLAlchemy
-and Alembic foundation). No schema exists yet.
+- `migrations/` — Alembic migrations. See
+  [`migrations/README.md`](migrations/README.md) for commands.
+- Seed data: not populated yet.
+
+No business tables exist yet (T022-T026 add them).
