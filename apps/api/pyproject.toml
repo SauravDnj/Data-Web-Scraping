@@ -33,6 +33,11 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["../../tests"]
+# Repo root, so `import workers` resolves even though the worker
+# package isn't pip-installed (it reuses this venv — see
+# docs/16_MEMORY.md for why there's no separate workers/pyproject.toml
+# yet).
+pythonpath = ["../.."]
 
 [tool.ruff]
 line-length = 88

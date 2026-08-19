@@ -2,32 +2,37 @@
 
 ## Active task
 
-T015 --- Worker skeleton.
+T020 --- SQLAlchemy foundation.
 
 ## Previous task
 
-T014 --- FastAPI skeleton. COMPLETE (done ahead of T012/T013 — see
-below). See `docs/18_COMPLETED_WORK.md` and `apps/api/app/main.py`.
+T015 --- Worker skeleton. COMPLETE (done ahead of T012/T013 — see
+below). See `docs/18_COMPLETED_WORK.md` and `workers/worker_main.py`.
 
 ## Goal
 
-Create the worker entry point: configuration loading, Redis
-connection, graceful shutdown, structured logging. Do not execute
-provider work yet.
+Create the database engine, session management, declarative base
+model, and naming/typing conventions that later schema tasks
+(T021-T027) build on.
 
 ## Not yet in scope
 
--   database schema/migrations (T020/T021);
+-   actual table schema (T022-T026 create identity/project/job/record/
+    ops tables);
 -   Google provider calls;
 -   scraping;
--   actual queue consumption logic (T060/T061);
+-   real queue consumption logic (T060/T061);
 -   frontend business screens.
 
 ## Handoff
 
-After T015:
+After T020:
 
-T020 (database) onward, or return to T012/T013 once unblocked.
+T021 (Alembic foundation) → T022 (identity DB) → ... Return to
+T012/T013 once unblocked — T021's migrations will need a real MySQL
+connection to actually run against, so T012 should land before T021
+finishes, even though T020 itself (engine/session code only, no live
+connection required) doesn't block on it.
 
 ## Open blockers (user action needed)
 

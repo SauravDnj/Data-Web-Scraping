@@ -69,8 +69,8 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T015 --- Worker skeleton. (T000-T002, T010, T011, T014 complete.
-T012/T013 prepared but NOT verified — see below.)
+T020 --- SQLAlchemy foundation. (T000-T002, T010, T011, T014, T015
+complete. T012/T013 prepared but NOT verified — see below.)
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
@@ -124,6 +124,52 @@ Known minor issue (not blocking): `starlette.testclient` emits a
 `StarletteDeprecationWarning` suggesting an `httpx2` package — left
 as-is since it's an unfamiliar/very new package and tests pass; revisit
 if it starts failing instead of warning.
+
+## Worker skeleton (T015)
+
+`workers/worker_main.py`: loads `WorkerSettings` (redis_url required,
+worker_id optional/auto-generated as `hostname-<8 hex chars>`),
+configures JSON logging (re-exported from `app.core.logging` — see
+below), installs SIGINT/SIGTERM handlers that set a `threading.Event`,
+attempts a Redis PING (logs healthy/unhealthy either way, never
+crashes on failure), then loops on `stop_event.wait(timeout=5)` until
+signaled — a placeholder only, no real job consumption until T060/T061.
+
+**No separate `workers/pyproject.toml` package** — the worker runs
+inside `apps/api`'s venv (redis/pydantic-settings already installed
+there), which is also how it will reach backend domain/service
+interfaces later per `docs/25_WORKER_FILE_PLAN.md`'s "should depend on
+backend domain/service interfaces rather than duplicating business
+logic." `apps/api/pyproject.toml` gained
+`[tool.pytest.ini_options] pythonpath = ["../.."]` so `import workers`
+resolves in tests without installing it.
+
+`workers/pyproject.toml` DOES exist but only holds `[tool.ruff]` /
+`[tool.mypy]` config (no `[project]`/`[build-system]` — not
+installable). Required because `workers/queue.py` collides with the
+stdlib `queue` module name under mypy's default file-to-module
+resolution; fixed with `explicit_package_bases = true` +
+`mypy_path = "apps/api"`. **Important**: that `mypy_path` is relative
+to the CWD mypy is invoked from (repo root, via
+`--config-file workers/pyproject.toml`), not relative to the config
+file itself — the exact command is in `workers/README.md`. Get this
+wrong and mypy silently can't resolve `app.core.logging`.
+
+**Caveat found during testing**: passing an explicit test file path to
+`pytest` from `apps/api/` (e.g. `pytest ../../tests/unit/test_worker.py`)
+changes pytest's rootdir/config detection and breaks the `pythonpath`
+resolution (`ModuleNotFoundError: workers`). The bare `pytest` command
+apps/api/README.md documents (and CI uses) is unaffected — always
+verified working. Don't pass explicit file paths when testing worker
+code; use `-k <name>` for selection instead if needed.
+
+Verified locally: 14/14 tests pass (2 new: stop-event-already-set and
+stop-event-set-concurrently-from-another-thread, the latter proving
+the actual signal-handler wakeup mechanism), ruff/mypy clean for
+`workers/`. Manually ran `python -m workers.worker_main`: logged
+startup, correctly reported Redis unavailable (real environment, T013
+still pending) without crashing, and `kill -TERM` produced a clean
+exit with no orphaned process.
 
 ## Next.js environment (T011)
 

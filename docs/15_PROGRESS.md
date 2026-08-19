@@ -10,7 +10,7 @@ tests: 0% V1: 0%
   Phase                Status      Completion
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
-  1 Local foundation   IN_PROGRESS        70%
+  1 Local foundation   IN_PROGRESS        85%
   2 Database           PENDING             0%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
@@ -23,13 +23,14 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T015 --- Worker skeleton. (T012/T013 open, blocked on user action.)
+T020 --- SQLAlchemy foundation. (T012/T013 open, blocked on user
+action.)
 
 ## Last verified milestone
 
-T014 --- FastAPI skeleton complete and verified locally (9/9 tests,
-lint/format/mypy clean, manual run confirmed /health and /ready
-behave correctly against real, currently-unconfigured MySQL/Redis).
+T015 --- Worker skeleton complete and verified locally (14/14 tests,
+lint/mypy clean, real manual run: startup, graceful Redis-unavailable
+handling, clean shutdown with no orphaned process).
 
 ## Rule
 

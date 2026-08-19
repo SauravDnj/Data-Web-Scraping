@@ -12,7 +12,7 @@
 -   [x] T014 FastAPI (done out of order — readiness checks are
         dependency-injected and fully testable without live
         MySQL/Redis; see docs/16_MEMORY.md)
--   [ ] T015 worker skeleton
+-   [x] T015 worker skeleton (done out of order, same reasoning)
 
 ## Next
 

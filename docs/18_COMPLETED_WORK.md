@@ -206,3 +206,34 @@ Evidence:
     handlers.
 
 Next task: T015 --- Worker skeleton.
+
+### T015 --- Worker skeleton
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/worker_main.py`, `workers/config.py`, `workers/queue.py`,
+    `workers/observability/logging.py` — entry point, settings,
+    Redis connectivity check, structured logging (reused from
+    `app.core.logging`), SIGINT/SIGTERM handling via a
+    `threading.Event`, placeholder loop (no real job consumption).
+-   4 tests added to `tests/unit/test_worker.py`: settings validation,
+    worker ID resolution (configured vs. auto-generated), and two
+    shutdown-behavior tests (stop-event-pre-set, and
+    stop-event-set-concurrently-from-another-thread — the latter is
+    what a real signal handler relies on).
+-   `apps/api/pyproject.toml` gained a `pythonpath` entry so `workers`
+    resolves in tests without a separate installable package;
+    `workers/pyproject.toml` added for ruff/mypy config only (not a
+    package) — see `docs/16_MEMORY.md` for why `workers/queue.py`
+    needed `explicit_package_bases`.
+-   Verified locally: 14/14 tests pass (full suite), ruff/mypy clean
+    for `workers/`, and a real manual run — `python -m
+    workers.worker_main` logged startup, correctly reported the
+    actual (still-pending) Redis as unavailable without crashing, and
+    a `kill -TERM` produced a clean exit with no orphaned process.
+-   No provider calls, no job-state modification, no scraping.
+
+Next task: T012/T013 (blocked on user action) then T020 --- SQLAlchemy
+foundation.
