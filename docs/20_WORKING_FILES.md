@@ -7,14 +7,14 @@ being changed.
 
 ## Active task
 
-T033 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T032
+T034 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T033
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T033 has not started.
+None yet — T034 has not started.
 ```
 
 ## Rule

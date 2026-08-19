@@ -540,3 +540,26 @@ Evidence:
 Next: T033 --- Project service (business rules + authorization
 boundaries — likely the point where real MySQL integration testing
 starts mattering more than the SQLite-substitution approach).
+
+### T033 --- Project service
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/services/errors.py` (`NotFoundError`/`PermissionDeniedError`/
+    `InvalidStateError`, shared across future services) and
+    `app/services/projects.py` (`ProjectService`).
+-   Added `ProjectRepository.update_fields()`/`.set_status()` (T032
+    didn't include these; T033 needed them).
+-   `ensure_can_start_job()` guard method satisfies "archived project
+    cannot start new jobs" — will be called by T035's job service.
+-   Every mutation records an audit event via `AuditLogRepository`,
+    verified directly (not just "didn't crash").
+-   13 new tests: audit events, validation, cross-user access denial,
+    not-found, both `ensure_can_start_job` outcomes, list-scoping.
+-   Verified locally: 125 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (45 source files).
+
+Next: T034 --- Configuration service (versioned provider config +
+validation workflow).

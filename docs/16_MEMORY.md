@@ -210,6 +210,41 @@ machine (not just writes whatever status it's given).
 Verified locally: 114 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (42 source files).
 
+## Project service (T033)
+
+`app/services/errors.py`: `ServiceError` base + `NotFoundError`,
+`PermissionDeniedError`, `InvalidStateError` — shared across every
+future service (T034+), deliberately NOT `app.core.errors.ApiError`
+(that's HTTP-transport, translated by the API layer later; services
+never import `app.core` or `app.api`). `app/services/projects.py`:
+`ProjectService` — create/get/list/update/archive, all
+owner-authorization-checked via `_require_owner`. Archive, not delete
+— no delete method exists anywhere in the project stack.
+
+Added two repository methods T032 didn't include but T033 needed:
+`ProjectRepository.update_fields()` and `.set_status()`.
+
+**`ensure_can_start_job()`** is the concrete answer to "archived
+project cannot start new jobs" — a guard method living on
+`ProjectService` (not duplicated into the not-yet-existing T035 job
+service) that T035 will call before creating a `Job`. Raises
+`InvalidStateError` for an archived project's owner, `NotFoundError`/
+`PermissionDeniedError` first via the same `get_project()` path other
+methods use.
+
+Every mutating method calls `_record_audit_event()` →
+`AuditLogRepository.create()` — verified directly in tests (not just
+"the method didn't crash").
+
+13 new tests: create + audit event, empty-name rejection (both create
+and update), cross-user access denial (get and update), not-found,
+update + audit event, archive + audit event, the two
+`ensure_can_start_job` outcomes, and list-scoping (only the requesting
+user's projects come back).
+
+Verified locally: 125 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (45 source files).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows

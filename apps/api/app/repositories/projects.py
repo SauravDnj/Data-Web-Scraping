@@ -21,6 +21,16 @@ class ProjectRepository(Protocol):
         offset: int = 0,
     ) -> Page[Project]: ...
 
+    def update_fields(
+        self,
+        project_id: int,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Project: ...
+
+    def set_status(self, project_id: int, status: ProjectStatus) -> Project: ...
+
 
 class SqlAlchemyProjectRepository(SqlAlchemyRepository[ProjectRow, Project]):
     model = ProjectRow
@@ -62,3 +72,28 @@ class SqlAlchemyProjectRepository(SqlAlchemyRepository[ProjectRow, Project]):
             statement = statement.where(ProjectRow.status == status)
         statement = statement.order_by(ProjectRow.created_at.desc())
         return self._paginate(statement, limit=limit, offset=offset)
+
+    def update_fields(
+        self,
+        project_id: int,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Project:
+        row = self._session.get(ProjectRow, project_id)
+        if row is None:
+            raise LookupError(f"Project {project_id} does not exist.")
+        if name is not None:
+            row.name = name
+        if description is not None:
+            row.description = description
+        self._session.flush()
+        return self._to_domain(row)
+
+    def set_status(self, project_id: int, status: ProjectStatus) -> Project:
+        row = self._session.get(ProjectRow, project_id)
+        if row is None:
+            raise LookupError(f"Project {project_id} does not exist.")
+        row.status = status
+        self._session.flush()
+        return self._to_domain(row)
