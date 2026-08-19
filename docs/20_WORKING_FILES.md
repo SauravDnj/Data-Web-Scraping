@@ -7,13 +7,14 @@ being changed.
 
 ## Active task
 
-T026 (T000-T002, T010, T011, T014, T015, T020-T025 complete; T012/T013
+T027 (T000-T002, T010, T011, T014, T015, T020-T026 complete; T012/T013
 prepared but blocked on user action — see docs/18_COMPLETED_WORK.md).
+T027 needs real query plans — likely genuinely blocked until T012.
 
 ## Active files
 
 ``` text
-None yet — T026 has not started.
+None yet — T027 has not started.
 ```
 
 ## Rule

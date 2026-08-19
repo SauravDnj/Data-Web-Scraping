@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        65%
+  2 Database           IN_PROGRESS        85%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,13 +23,14 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T026 --- Operations database. (T012/T013 open, blocked on user action.)
+T027 --- Database indexes and constraints. (T012/T013 open, blocked on
+user action. T027 likely genuinely requires T012 to finish.)
 
 ## Last verified milestone
 
-T025 --- Record database complete and verified (47 passed, 1 skipped
-as expected) without live MySQL. Also fixed a real gap: tests/ had
-never been linted (17 issues), CI extended to cover it.
+T026 --- Operations database complete and verified (53 passed, 1
+skipped as expected) without live MySQL. All 8 database-schema tasks
+(T020-T026) now done.
 
 ## Rule
 

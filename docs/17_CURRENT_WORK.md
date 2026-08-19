@@ -2,20 +2,26 @@
 
 ## Active task
 
-T026 --- Operations database.
+T027 --- Database indexes and constraints.
 
 ## Previous task
 
-T025 --- Record database. COMPLETE, done without live MySQL (the
-earlier "might need real MySQL" flag turned out overcautious — always
-check the literal acceptance criteria). Also fixed a real gap: `tests/`
-had never been linted; 17 issues fixed, CI extended. See
+T026 --- Operations database. COMPLETE, done without live MySQL. All 8
+database-schema tasks (T020-T026) are now done. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create `exports`, `schedules`, and `audit_logs` tables + migration,
-per `docs/04_DATABASE_DESIGN.md`.
+Review query patterns across all tables and add only justified
+indexes/constraints, verified against real query plans.
+
+## This is very likely the actual hard stop
+
+Unlike T023/T025/T026 (flagged as possibly needing MySQL, turned out
+not to), T027 explicitly requires verifying with query plans — that
+cannot be done honestly against SQLite (different query planner,
+different index usage). Read the literal T027 prompt to confirm, but
+expect to report back to the user here rather than push through.
 
 ## Not yet in scope
 
@@ -26,10 +32,8 @@ per `docs/04_DATABASE_DESIGN.md`.
 
 ## Handoff
 
-After T026: T027 (indexes/constraints review — needs real query
-plans, likely the actual hard stop for the SQLite-substitution
-pattern) → T030 (domain models). Return to T012/T013 as soon as
-possible.
+After T027: T030 (domain models) onward. Return to T012/T013 — this
+time likely truly required before T027 can complete.
 
 ## Open blockers (user action needed)
 

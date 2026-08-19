@@ -118,3 +118,16 @@ def test_record_tables_are_created_and_removed_by_migration(tmp_path):
 
     command.downgrade(config, "base")
     assert {"records", "record_provenance"}.isdisjoint(_table_names(db_path))
+
+
+def test_operations_tables_are_created_and_removed_by_migration(tmp_path):
+    """T026: same pattern as T022-T025."""
+    db_path = tmp_path / "operations_migration_smoke.db"
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+
+    command.upgrade(config, "head")
+    assert {"exports", "schedules", "audit_logs"} <= _table_names(db_path)
+
+    command.downgrade(config, "base")
+    assert {"exports", "schedules", "audit_logs"}.isdisjoint(_table_names(db_path))

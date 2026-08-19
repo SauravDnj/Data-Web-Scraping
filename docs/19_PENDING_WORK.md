@@ -30,7 +30,10 @@
 -   [x] T024 Job database (done without live MySQL, same pattern)
 -   [x] T025 Record database (done without live MySQL; found tests/
         had never been linted — fixed 17 issues + extended CI)
--   [ ] T026--T027 ops tables; index review with real query plans
+-   [x] T026 Operations database (exports/schedules/audit_logs, done
+        without live MySQL — all 8 schema tasks now done except T027)
+-   [ ] T027 indexes/constraints review (needs real query plans —
+        likely the actual hard stop)
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
