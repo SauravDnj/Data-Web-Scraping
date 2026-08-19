@@ -7,15 +7,30 @@ being changed.
 
 ## Active task
 
-T052 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T051 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
+T054 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T053 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
 T012/T013 prepared but blocked on user action). Phase 4 (Provider)
 fully complete as of T045; Phase 5 (Data pipeline) in progress.
 
 ## Active files
 
 ``` text
-None yet — T052 has not started.
+None yet — T054 has not started.
+```
+
+## T053 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/deduplicate.py           (new)
+apps/api/app/repositories/records.py           (modified — update_collected_data added)
+tests/unit/test_pipeline_deduplicate.py        (new)
+```
+
+## T052 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/canonical_identity.py    (new)
+tests/unit/test_pipeline_canonical_identity.py (new)
 ```
 
 ## T051 files (complete — for reference)

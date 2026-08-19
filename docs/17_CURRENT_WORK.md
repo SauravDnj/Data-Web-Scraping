@@ -2,38 +2,39 @@
 
 ## Active task
 
-T052 --- Canonical identity.
+T054 --- Transactional persistence.
 
 ## Previous task
 
-T051 --- Validation pipeline. COMPLETE — `app/pipeline/validate.py`:
-`RecordQuality`/`FieldRule`/`FieldValidationError`/`ValidationResult`/
-`validate_record_draft()`, Stage 2+4 combined. `missing_severity` vs.
-`severity` are deliberately separate knobs, directly matching docs/08's
-two worked examples ("missing website → warning", "invalid coordinate
-→ rejected"). URL syntax check is syntax-only, never a real request.
-Wired into `app/providers/google_maps/mapper.py` via
-`GOOGLE_FIELD_RULES` + `validate_google_place_record()`, kept as an
-explicit separate step from `map_place_to_record_draft()`. 28 new
-tests. T050 --- Normalization pipeline and all of Phase 4 complete
-before it. See `docs/18_COMPLETED_WORK.md`.
+T053 --- Deduplication. COMPLETE — `app/pipeline/deduplicate.py`:
+`deduplicate_within_batch()` (pure, streaming, within+across pages) +
+`resolve_against_existing()` (DB-touching, create/update/skip) +
+`deduplicate_batch()` (composes both, tracks `DedupSummary`). New
+`RecordRepository.update_collected_data()` (T032 never needed an
+update path before now). Default policy: `update_existing=True`
+(repeat collections refresh stale data), fully supports
+`update_existing=False` too. Database-constraint test proves the T025
+`UniqueConstraint` is the final safety net independent of this
+module's own logic. 11 new tests. T052 --- Canonical identity and all
+of T050-T051/Phase 4 complete before it. See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create the deterministic record identity strategy (read
-`docs/T052_PROMPT.md` before assuming scope) — Stage 5 of
-`docs/08_DATA_PIPELINE_DEEP.md`: prefer a stable provider identifier
-when permitted (Google's place `id` — already `RecordDraft.
-provider_record_id`, per T043/`database/DATABASE_DEEP.md`'s "prefer
-it if permitted" guidance), define a fallback canonicalization only
-where genuinely needed, scope the key by project+provider (T000's
-resolved decision: `project_scope + provider + provider_id`, matching
-`records(project_id, canonical_key)`'s unique constraint from T025).
-Must NOT use business name alone as identity. Test repeated-identical/
-minor-formatting-difference/different-businesses cases, and explicitly
-document known collision limitations — acceptance is "false merges
-minimized and documented," not "zero collisions," which would be an
-impossible claim for a fallback heuristic.
+Make database writes reliable (read `docs/T054_PROMPT.md` before
+assuming scope) — Stage 7 of `docs/08_DATA_PIPELINE_DEEP.md`: wrap
+T053's per-record insert/update decisions in a real atomic
+transaction (a whole batch succeeds or rolls back together, matching
+`docs/08`'s "never hide failures" principle — partial success must be
+reported honestly, e.g. `partially_completed`, not silently swept
+under a bare "completed"), store `RecordProvenance` rows (genuinely
+new — T043 left `GOOGLE_MAPS_TEXT_SEARCH_OPERATION` specifically for
+this), increment created/updated/rejected counters only after a
+successful commit (never optimistically before), handle DB constraint
+conflicts gracefully (e.g. a concurrent-write race past the app-level
+`get_by_canonical_key` check), and add rollback-behavior tests
+proving a failed transaction leaves no partial, inconsistent state —
+T054's literal acceptance criterion.
 
 ## Not yet in scope
 

@@ -69,9 +69,9 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T052 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T054 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045 and
-T050-T051 complete — Phase 4 Provider fully done, Phase 5 Data
+T050-T053 complete — Phase 4 Provider fully done, Phase 5 Data
 pipeline in progress. T012/T013 prepared but NOT verified — see below.
 See the dated sections further down for detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
@@ -1114,6 +1114,130 @@ isolation).
 
 Verified locally: 333 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (76 source files).
+
+## Canonical identity (T052) — current task now T053
+
+`app/pipeline/canonical_identity.py`: `compute_canonical_key()` — Stage
+5 of `docs/08_DATA_PIPELINE_DEEP.md`. Fully generic (no Google-specific
+wiring needed in `app/providers/google_maps/mapper.py`, unlike T050/
+T051 — this function needs no per-field declarations, it works
+directly on any `RecordDraft`).
+
+**Resolved a real ambiguity between T000's conceptual decision and the
+actual schema**: T000 (docs/16_MEMORY.md) said the canonical key
+should be "project_scope + provider + provider_id" — but `records`'s
+real unique constraint (T025) is the *composite*
+`UniqueConstraint(project_id, canonical_key)`, which already scopes
+uniqueness per-project structurally. So `project_id` does **not** need
+to be textually embedded in the returned string (T025's own
+cross-project-dedup test already proves the same literal key is
+allowed to repeat across projects) — only `provider` needs embedding,
+since the DB constraint has no separate `provider` dimension of its
+own.
+
+**Preference order, per T052 item 1 and the DO NOT list ("never use
+business name alone")**: `RecordDraft.provider_record_id` (Google's
+place `id`) always wins when present — `f"{provider}:{provider_record_id}"`.
+Falls back to `name` + `formatted_address` **together** only when no
+provider identifier exists.
+
+**Fallback key is a SHA-256 hash of the normalized name+address pair,
+not the raw text** — `canonical_key` is `String(512)`
+(`app/db/models/record.py`); a raw long name/address could exceed
+that, and truncating instead would risk two different long addresses
+colliding on a shared prefix. The hash is computed over the
+*normalized* input, so it's still fully deterministic.
+
+**Identity normalization is deliberately more aggressive than T050's
+`FieldKind.TEXT`**: lowercased + whitespace-collapsed (not just
+trimmed + NFC) — this text is only ever compared, never displayed, so
+"Example Cafe" / "example cafe" / "Example   Cafe" must all produce
+the same key, which would be wrong behavior for T050's *display*
+normalization but is exactly right here.
+
+**Known collision limitations documented directly in the module
+docstring (T052 item 9, not solved — no fallback heuristic can be
+perfect)**: a false merge is possible if two different businesses
+share both an identical name and address string (e.g. two same-named
+shops in one plaza); a false split is possible if the same business's
+address differs by more than whitespace/case (e.g. "St" vs. "Street",
+a missing suite number) — only Unicode/whitespace/case differences are
+normalized away, no abbreviation expansion or fuzzy matching. This is
+exactly why the provider identifier path is always preferred when
+available.
+
+15 new tests (`tests/unit/test_pipeline_canonical_identity.py`):
+provider-id preference (even when name/address also exist), provider
+embedded so different providers never collide, fallback triggers only
+when no id exists, bounded-length hash even for absurdly long input,
+raises when insufficient data exists (missing id AND missing name/
+address, or either alone), the DO NOT rule (same name + different
+address never collide), repeated-identical-input determinism (both
+paths), minor-formatting-difference insensitivity (case + whitespace),
+and different-businesses non-collision (both name-differs and
+address-differs cases).
+
+Verified locally: 348 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (77 source files).
+
+## Deduplication (T053) — current task now T054
+
+`app/pipeline/deduplicate.py`: Stage 6 of the data pipeline, split into
+two independently-testable composable steps (same pattern as every
+prior pipeline stage this session): `deduplicate_within_batch()`
+(pure, no DB — items 1-2, within-page and across-page dedup via one
+streaming `seen` set) and `resolve_against_existing()` (DB-touching,
+item 3 — uses `RecordRepository.get_by_canonical_key()`, which was
+already added at T032 with a comment anticipating exactly this).
+`deduplicate_batch()` composes both and accumulates `DedupSummary`
+(item 6).
+
+**New repository method needed and added**:
+`RecordRepository.update_collected_data()` (Protocol + SQLAlchemy impl,
+`app/repositories/records.py`) — T032 never added an update path since
+nothing needed one until now. Refreshes `data`/`collected_at`/`job_id`
+on an existing row; never touches `canonical_key`/`provider_record_id`/
+`project_id` (identity doesn't change on an update).
+
+**Update-vs-skip (item 5), a deliberate default**: `update_existing=True`
+by default — a repeat collection refreshes the existing row's data
+(ratings/hours/status genuinely go stale; a collection product whose
+records never refresh has limited value). `job_id` moves to whichever
+job most recently re-collected the record. `update_existing=False`
+(skip) is fully supported too, not hypothetical — a real, equally
+exercised code path, not a default assumed to be the only option.
+
+**`deduplicate_within_batch()` yields every draft, not just first
+occurrences** — `(draft, canonical_key, is_duplicate)` for all of
+them, so `deduplicate_batch()` can tally duplicate counts (item 6) in
+one pass without a second one just to count what got dropped. (First
+draft of this function only yielded first-occurrences and silently
+dropped the rest — caught immediately while wiring the summary
+accumulator, since there was nowhere left to increment
+`duplicates_in_batch` from.)
+
+**Database constraint test (item 9)** proves the final safety net
+independently of this module's own logic: two `RecordRow` inserts with
+the same `(project_id, canonical_key)`, added directly (bypassing
+`deduplicate_batch()` entirely), and the second `session.flush()`
+raises `IntegrityError` — the DB-level `UniqueConstraint` from T025 is
+what makes T053's acceptance criterion ("repeated collection does not
+create uncontrolled duplicate rows") true even if application logic
+had a bug, not just when it behaves correctly. Uses two separate
+`session_scope()` blocks (matching `tests/unit/
+test_project_and_config_models.py`'s established pattern) — asserting
+an expected `IntegrityError` from inside an already-open `session_scope`
+block would leave that session unable to commit afterward.
+
+11 new tests: within-page dedup, across-page dedup (a generator
+spanning two "pages"), create/update/skip against a real repository +
+SQLite, `DedupSummary` counting every outcome kind in one batch (item
+6), false-merge (two different businesses, both kept, item 7),
+duplicate-batch (5 repeats of one record → exactly 1 row + 4 counted
+duplicates, item 8), and the database-constraint test above (item 9).
+
+Verified locally: 359 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (78 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

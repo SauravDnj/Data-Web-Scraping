@@ -1127,3 +1127,73 @@ Next: T052 --- Canonical identity (deterministic record identity
 strategy — prefer the stable provider identifier, fallback
 canonicalization only where needed, project+provider scope, documented
 collision limitations).
+
+### T052 --- Canonical identity
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/canonical_identity.py`: `compute_canonical_key()` —
+    fully generic, no Google-specific wiring needed anywhere.
+-   Resolved a real ambiguity between T000's conceptual decision
+    ("project_scope + provider + provider_id") and the actual schema:
+    `records`'s composite `UniqueConstraint(project_id, canonical_key)`
+    (T025) already scopes uniqueness per-project, so `project_id`
+    isn't embedded in the string; `provider` is embedded, since the DB
+    constraint has no separate `provider` dimension.
+-   Preference order: `provider_record_id` always wins when present;
+    fallback (SHA-256 hash of normalized `name`+`formatted_address`
+    together, never name alone — T052's explicit DO NOT rule) only
+    when no provider identifier exists. Hashed, not embedded verbatim,
+    to stay safely within `canonical_key`'s `String(512)` bound
+    regardless of input length.
+-   Known collision limitations (false merge / false split) documented
+    directly in the module docstring, not glossed over.
+-   15 new tests: provider-id preference, provider-embedding (no
+    cross-provider collision), fallback triggers/raises correctly,
+    the DO NOT rule, repeated-identical-input determinism, minor-
+    formatting-difference insensitivity, different-businesses
+    non-collision.
+-   Verified locally: 348 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (77 source files).
+
+Next: T053 --- Deduplication (batch + database dedup using canonical
+identity, update-vs-skip policy, false-merge/duplicate-batch/
+DB-constraint tests).
+
+### T053 --- Deduplication
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/deduplicate.py`: `deduplicate_within_batch()` (pure,
+    streaming, within+across pages) + `resolve_against_existing()`
+    (DB-touching, uses T032's `get_by_canonical_key`) +
+    `deduplicate_batch()` (composes both, tracks `DedupSummary`).
+-   New `RecordRepository.update_collected_data()` — T032 never
+    included an update path; added now since T053 genuinely needs one.
+-   Update-vs-skip policy: `update_existing=True` by default (repeat
+    collections refresh stale data — ratings/hours/status genuinely
+    change), `update_existing=False` fully supported as a real,
+    equally-exercised alternative, not a hardcoded assumption.
+-   `deduplicate_within_batch()` yields every draft with an
+    `is_duplicate` flag (not just first occurrences), so duplicate
+    counts can be tallied in one pass.
+-   Database-constraint test proves the T025 `UniqueConstraint` is the
+    final safety net independent of this module's own correctness —
+    two direct `RecordRow` inserts with the same
+    `(project_id, canonical_key)`, bypassing `deduplicate_batch()`
+    entirely, and the second flush raises `IntegrityError`.
+-   11 new tests: within/across-page dedup, create/update/skip against
+    a real repository, summary counting every outcome kind,
+    false-merge (two different businesses both kept), duplicate-batch
+    (5 repeats → 1 row + 4 counted duplicates), the database-constraint
+    test above.
+-   Verified locally: 359 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (78 source files).
+
+Next: T054 --- Transactional persistence (atomic batch writes,
+provenance storage, rollback-safe, counters incremented only after
+success).

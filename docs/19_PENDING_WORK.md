@@ -94,7 +94,15 @@
         2+4 combined, `missing_severity` vs. `severity` as separate
         knobs matching docs/08's own examples; wired into the Google
         mapper — see docs/16_MEMORY.md)
--   [ ] T052--T055 pipeline
+-   [x] T052 Canonical identity (`compute_canonical_key()` —
+        provider-id preferred, hashed fallback of name+address
+        together, known collisions documented — see
+        docs/16_MEMORY.md)
+-   [x] T053 Deduplication (`app/pipeline/deduplicate.py` —
+        within/across-page + against-existing via a real repository
+        call; new `RecordRepository.update_collected_data()`;
+        DB-constraint test — see docs/16_MEMORY.md)
+-   [ ] T054--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
