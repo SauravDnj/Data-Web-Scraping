@@ -2,22 +2,18 @@
 SQLAlchemy — depends only on repository Protocols (T032) and domain
 objects (T030), so it's unit-testable without a real API or database."""
 
-from typing import Any
-
-from app.domain.audit import AuditLogEntry
+from app.domain.audit_actions import AuditAction
 from app.domain.projects import Project, ProjectStatus
-from app.repositories.audit import AuditLogRepository
 from app.repositories.base import Page
 from app.repositories.projects import ProjectRepository
+from app.services.audit import AuditService
 from app.services.errors import InvalidStateError, NotFoundError, PermissionDeniedError
 
 
 class ProjectService:
-    def __init__(
-        self, projects: ProjectRepository, audit_log: AuditLogRepository
-    ) -> None:
+    def __init__(self, projects: ProjectRepository, audit: AuditService) -> None:
         self._projects = projects
-        self._audit_log = audit_log
+        self._audit = audit
 
     def create_project(
         self,
@@ -36,8 +32,12 @@ class ProjectService:
             description=description,
         )
         created = self._projects.create(project)
-        self._record_audit_event(
-            user_id, "project.created", created.id, {"name": created.name}
+        self._audit.record_event(
+            actor_user_id=user_id,
+            action=AuditAction.PROJECT_CREATED,
+            entity_type="project",
+            entity_id=created.id,
+            details={"name": created.name},
         )
         return created
 
@@ -73,8 +73,12 @@ class ProjectService:
             for key, value in {"name": name, "description": description}.items()
             if value is not None
         }
-        self._record_audit_event(
-            requesting_user_id, "project.updated", project_id, changed
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.PROJECT_UPDATED,
+            entity_type="project",
+            entity_id=project_id,
+            details=changed,
         )
         return updated
 
@@ -85,7 +89,12 @@ class ProjectService:
         self._require_owner(project, requesting_user_id)
 
         archived = self._projects.set_status(project_id, ProjectStatus.ARCHIVED)
-        self._record_audit_event(requesting_user_id, "project.archived", project_id, {})
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.PROJECT_ARCHIVED,
+            entity_type="project",
+            entity_id=project_id,
+        )
         return archived
 
     def ensure_can_start_job(
@@ -112,21 +121,3 @@ class ProjectService:
             raise PermissionDeniedError(
                 f"User {requesting_user_id} cannot access project {project.id}."
             )
-
-    def _record_audit_event(
-        self,
-        user_id: int,
-        action: str,
-        entity_id: int | None,
-        details: dict[str, Any],
-    ) -> None:
-        self._audit_log.create(
-            AuditLogEntry(
-                id=None,
-                user_id=user_id,
-                action=action,
-                entity_type="project",
-                entity_id=entity_id,
-                details=details,
-            )
-        )

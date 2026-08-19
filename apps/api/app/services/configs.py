@@ -6,10 +6,12 @@ for ownership authorization, reused rather than duplicated."""
 
 from typing import Any
 
+from app.domain.audit_actions import AuditAction
 from app.domain.projects import CollectionConfig
 from app.domain.provider_validation import ProviderConfigValidator
 from app.repositories.base import Page
 from app.repositories.configs import CollectionConfigRepository
+from app.services.audit import AuditService
 from app.services.errors import InvalidStateError
 from app.services.projects import ProjectService
 
@@ -24,10 +26,12 @@ class ConfigurationService:
         configs: CollectionConfigRepository,
         projects: ProjectService,
         validator: ProviderConfigValidator,
+        audit: AuditService,
     ) -> None:
         self._configs = configs
         self._projects = projects
         self._validator = validator
+        self._audit = audit
 
     def create_version(
         self,
@@ -61,9 +65,27 @@ class ConfigurationService:
         )
         created = self._configs.create(new_version)
         assert created.id is not None  # freshly persisted, always has an id
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.CONFIG_CREATED,
+            entity_type="collection_config",
+            entity_id=created.id,
+            details={
+                "project_id": project_id,
+                "provider": provider,
+                "version": created.version,
+            },
+        )
 
         if activate:
             created = self._configs.set_active_version(project_id, created.id)
+            self._audit.record_event(
+                actor_user_id=requesting_user_id,
+                action=AuditAction.CONFIG_ACTIVATED,
+                entity_type="collection_config",
+                entity_id=created.id,
+                details={"project_id": project_id, "version": created.version},
+            )
 
         return created
 
@@ -73,7 +95,15 @@ class ConfigurationService:
         """Switch which already-persisted version is active, without
         creating a new one — e.g. reverting to a previous version."""
         self._projects.get_project(project_id, requesting_user_id=requesting_user_id)
-        return self._configs.set_active_version(project_id, config_id)
+        activated = self._configs.set_active_version(project_id, config_id)
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.CONFIG_ACTIVATED,
+            entity_type="collection_config",
+            entity_id=config_id,
+            details={"project_id": project_id, "version": activated.version},
+        )
+        return activated
 
     def get_active(
         self, project_id: int, *, requesting_user_id: int

@@ -4,13 +4,11 @@ retry. No provider calls here — that belongs to the worker
 (T032), the T031 state machine, and other services (T033/T034),
 reused rather than duplicated."""
 
-from typing import Any
-
-from app.domain.audit import AuditLogEntry
+from app.domain.audit_actions import AuditAction
 from app.domain.job_errors import is_retryable
 from app.domain.jobs import Job, JobStatus
-from app.repositories.audit import AuditLogRepository
 from app.repositories.jobs import JobRepository
+from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError, NotFoundError
 from app.services.projects import ProjectService
@@ -22,12 +20,12 @@ class JobService:
         jobs: JobRepository,
         projects: ProjectService,
         configs: ConfigurationService,
-        audit_log: AuditLogRepository,
+        audit: AuditService,
     ) -> None:
         self._jobs = jobs
         self._projects = projects
         self._configs = configs
-        self._audit_log = audit_log
+        self._audit = audit
 
     def create_job(
         self,
@@ -74,8 +72,12 @@ class JobService:
         assert created.id is not None
         queued = self._jobs.update_status(created.id, JobStatus.QUEUED)
 
-        self._record_audit_event(
-            requesting_user_id, "job.created", queued.id, {"project_id": project_id}
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.JOB_CREATED,
+            entity_type="job",
+            entity_id=queued.id,
+            details={"project_id": project_id},
         )
         return queued
 
@@ -85,7 +87,12 @@ class JobService:
     def cancel_job(self, job_id: int, *, requesting_user_id: int) -> Job:
         self._require_owned_job(job_id, requesting_user_id)
         cancelled = self._jobs.update_status(job_id, JobStatus.CANCELLED)
-        self._record_audit_event(requesting_user_id, "job.cancelled", job_id, {})
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.JOB_CANCELLED,
+            entity_type="job",
+            entity_id=job_id,
+        )
         return cancelled
 
     def pause_job(self, job_id: int, *, requesting_user_id: int) -> Job:
@@ -94,13 +101,23 @@ class JobService:
         here."""
         self._require_owned_job(job_id, requesting_user_id)
         paused = self._jobs.update_status(job_id, JobStatus.PAUSED)
-        self._record_audit_event(requesting_user_id, "job.paused", job_id, {})
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.JOB_PAUSED,
+            entity_type="job",
+            entity_id=job_id,
+        )
         return paused
 
     def resume_job(self, job_id: int, *, requesting_user_id: int) -> Job:
         self._require_owned_job(job_id, requesting_user_id)
         resumed = self._jobs.update_status(job_id, JobStatus.RUNNING)
-        self._record_audit_event(requesting_user_id, "job.resumed", job_id, {})
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.JOB_RESUMED,
+            entity_type="job",
+            entity_id=job_id,
+        )
         return resumed
 
     def retry_job(self, job_id: int, *, requesting_user_id: int) -> Job:
@@ -127,11 +144,15 @@ class JobService:
         assert created.id is not None
         queued = self._jobs.update_status(created.id, JobStatus.QUEUED)
 
-        self._record_audit_event(
-            requesting_user_id,
-            "job.retried",
-            queued.id,
-            {"original_job_id": job_id, "original_error_code": original.error_code},
+        self._audit.record_event(
+            actor_user_id=requesting_user_id,
+            action=AuditAction.JOB_RETRIED,
+            entity_type="job",
+            entity_id=queued.id,
+            details={
+                "original_job_id": job_id,
+                "original_error_code": original.error_code,
+            },
         )
         return queued
 
@@ -145,21 +166,3 @@ class JobService:
             job.project_id, requesting_user_id=requesting_user_id
         )
         return job
-
-    def _record_audit_event(
-        self,
-        user_id: int,
-        action: str,
-        entity_id: int | None,
-        details: dict[str, Any],
-    ) -> None:
-        self._audit_log.create(
-            AuditLogEntry(
-                id=None,
-                user_id=user_id,
-                action=action,
-                entity_type="job",
-                entity_id=entity_id,
-                details=details,
-            )
-        )

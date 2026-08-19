@@ -358,6 +358,47 @@ retrieval, not-found, cross-user denial (both search and detail).
 Verified locally: 158 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (51 source files).
 
+## Audit service (T037) — current task now T038
+
+Checked what was already covered before building: `AuditLogRepository`
+(T032) existed, and `ProjectService`/`JobService` already called it
+via private `_record_audit_event` helpers using ad-hoc string action
+names. `ConfigurationService` had **no audit calls at all** — T034's
+IMPLEMENT list never mentioned audit (T033's did), so it was
+genuinely missing, not an oversight worth flagging separately.
+
+Real new work: `app/domain/audit_actions.py` (`AuditAction` StrEnum —
+the single source of truth for action names, e.g.
+`AuditAction.PROJECT_CREATED == "project.created"`);
+`app/domain/audit_redaction.py` (`redact_details()` — recursively
+scrubs keys matching `password`/`secret`/`token`/`api_key`/
+`authorization`/`credential`/`private_key`, case-insensitive substring
+match); `app/services/audit.py` (`AuditService.record_event()` —
+redacts before persisting, requires an `AuditAction` not a raw string).
+New `AuditLogRepository.list_for_entity()` (+ `AuditService` wrapper)
+— "audit events are queryable" previously only meant "by actor",
+now also "by entity" (e.g. full history of one project/job).
+
+**Refactored `ProjectService`/`JobService` to depend on `AuditService`
+instead of `AuditLogRepository` directly** (removed each service's
+private `_record_audit_event` duplicate), and **added audit calls to
+`ConfigurationService`** (`config.created`, `config.activated`) which
+had none before. This changed all three services' constructors —
+updated every test file that builds them
+(`test_project_service.py`, `test_configuration_service.py`,
+`test_job_service.py`, `test_record_service.py`) to wrap
+`SqlAlchemyAuditLogRepository` in `AuditService` rather than passing
+it directly. `test_repositories.py`'s repository-level tests are
+unaffected — they intentionally exercise `SqlAlchemyAuditLogRepository`
+directly, not through `AuditService`.
+
+12 new tests: redaction (scrubbing + recursive), a real
+`record_event()` call proving a password never reaches the persisted
+`details`, `list_for_entity` scoping, actor/entity identification.
+
+Verified locally: 164 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (54 source files).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows

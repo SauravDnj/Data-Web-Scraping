@@ -14,19 +14,20 @@ from app.db.session import session_scope
 from app.repositories.audit import SqlAlchemyAuditLogRepository
 from app.repositories.configs import SqlAlchemyCollectionConfigRepository
 from app.repositories.projects import SqlAlchemyProjectRepository
+from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError, PermissionDeniedError
 from app.services.projects import ProjectService
 
 
 def _make_services(session, validator=None):
-    projects = ProjectService(
-        SqlAlchemyProjectRepository(session), SqlAlchemyAuditLogRepository(session)
-    )
+    audit = AuditService(SqlAlchemyAuditLogRepository(session))
+    projects = ProjectService(SqlAlchemyProjectRepository(session), audit)
     configs = ConfigurationService(
         SqlAlchemyCollectionConfigRepository(session),
         projects,
         validator or AlwaysValidValidator(),
+        audit,
     )
     return projects, configs
 

@@ -637,3 +637,30 @@ Evidence:
 Next: T037 --- Audit service (structured audit events — likely
 substantially already covered by `AuditLogRepository`/the pattern
 established across T033-T036; check what's actually left to add).
+
+### T037 --- Audit service
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/audit_actions.py` (`AuditAction` StrEnum, single
+    source of truth for action names) and
+    `app/domain/audit_redaction.py` (`redact_details()`, recursive).
+-   `app/services/audit.py` (`AuditService`): `record_event()` always
+    redacts before persisting; new `list_for_entity()` (+ repository
+    method) for full per-entity history, not just per-actor.
+-   Refactored `ProjectService`/`JobService` to depend on
+    `AuditService` instead of `AuditLogRepository` directly (removed
+    duplicated private helpers); **added audit calls to
+    `ConfigurationService`**, which had none before T037.
+-   Updated all dependent test files' service constructors.
+-   12 new tests: redaction (direct + through a real `record_event()`
+    call proving a password never reaches persisted `details`),
+    entity-scoped history, actor/entity identification.
+-   Verified locally: 164 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (54 source files).
+
+Next: T038 --- Authentication (secure V1 auth — likely the actual next
+hard stop for the SQLite-substitution approach; session/token handling
+benefits strongly from real integration tests).

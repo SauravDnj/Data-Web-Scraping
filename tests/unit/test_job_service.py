@@ -14,6 +14,7 @@ from app.repositories.audit import SqlAlchemyAuditLogRepository
 from app.repositories.configs import SqlAlchemyCollectionConfigRepository
 from app.repositories.jobs import SqlAlchemyJobRepository
 from app.repositories.projects import SqlAlchemyProjectRepository
+from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError, NotFoundError, PermissionDeniedError
 from app.services.jobs import JobService
@@ -21,18 +22,15 @@ from app.services.projects import ProjectService
 
 
 def _make_services(session):
-    projects = ProjectService(
-        SqlAlchemyProjectRepository(session), SqlAlchemyAuditLogRepository(session)
-    )
+    audit = AuditService(SqlAlchemyAuditLogRepository(session))
+    projects = ProjectService(SqlAlchemyProjectRepository(session), audit)
     configs = ConfigurationService(
-        SqlAlchemyCollectionConfigRepository(session), projects, AlwaysValidValidator()
-    )
-    jobs = JobService(
-        SqlAlchemyJobRepository(session),
+        SqlAlchemyCollectionConfigRepository(session),
         projects,
-        configs,
-        SqlAlchemyAuditLogRepository(session),
+        AlwaysValidValidator(),
+        audit,
     )
+    jobs = JobService(SqlAlchemyJobRepository(session), projects, configs, audit)
     return projects, configs, jobs
 
 

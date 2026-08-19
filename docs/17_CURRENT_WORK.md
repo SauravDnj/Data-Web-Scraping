@@ -2,49 +2,38 @@
 
 ## Active task
 
-T037 --- Audit service.
+T038 --- Authentication.
 
 ## Previous task
 
-T036 --- Record service. COMPLETE — 11 new tests including a synthetic
-250-record pagination test, still no live MySQL needed. See
+T037 --- Audit service. COMPLETE — 12 new tests, still no live MySQL
+needed. Centralized action names + secret redaction; found
+`ConfigurationService` had no audit calls at all and added them. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement structured audit events. Likely substantially already
-covered — every service (T033-T036) already calls
-`AuditLogRepository.create()` for its mutations. Check T037's exact
-prompt for what's genuinely still missing (e.g. a query/reporting
-service on top of the repository, standardized action-name
-conventions) before assuming a large build is needed.
-
-## Still open
-
-T027 (index review) remains PARTIAL, genuinely blocked on real MySQL
-for EXPLAIN verification — see `database/INDEX_REVIEW.md`. T012/T013
-still not resolved by the user. The SQLite-substitution pattern has
-now carried through T035 — still holding, but T038/T039 (auth) will
-likely be the next place a real hard stop shows up (session/token
-handling benefits strongly from integration tests). Any future
-migration that ALTERs an existing table (not just CREATE TABLE) must
-use `batch_alter_table` and be verified against SQLite directly —
-don't assume autogenerate's plain output works there.
+Implement secure V1 authentication (read `docs/T038_PROMPT.md` before
+assuming scope). Likely the real next hard stop: password/session/
+token handling benefits strongly from real integration tests, unlike
+the business-logic services (T033-T037) that held up fine on SQLite.
 
 ## Not yet in scope
 
--   Google provider calls (T041+ — T034's "validation" is structural/
-    generic only, not calling the real Google API);
+-   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
 -   frontend business screens.
 
-## Handoff
+## Still open
 
-After T034: T035 (job service, will use ProjectService.
-ensure_can_start_job) → T036 (record service) → T037 (audit service —
-may already be substantially covered by AuditLogRepository/the
-pattern established in ProjectService) → T038/T039 (auth).
+-   T027 (index review) remains PARTIAL, genuinely blocked on real
+    MySQL for EXPLAIN verification — see `database/INDEX_REVIEW.md`.
+-   T012/T013 still not resolved by the user (see below).
+-   Any future migration that ALTERs an existing table (not just
+    CREATE TABLE) must use `batch_alter_table` and be verified against
+    SQLite directly — don't assume autogenerate's plain output works
+    there (found the hard way at T035).
 
 ## Open blockers (user action needed)
 
@@ -55,7 +44,3 @@ pattern established in ProjectService) → T038/T039 (auth).
     (native Windows, no WSL) to verify now, or skip local verification
     and rely on the Ubuntu VPS deployment target for real Redis
     testing later. WSL was explicitly ruled out by the user.
-
-T015 (worker skeleton) can still proceed: it only needs the *ability*
-to attempt a Redis connection and shut down gracefully if it's
-unreachable, matching T014's readiness-check pattern.

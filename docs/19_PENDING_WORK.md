@@ -51,7 +51,10 @@
         for SQLite; see docs/16_MEMORY.md)
 -   [x] T036 Record service (project-scoped search/filter/sort, safe
         pagination, synthetic-large-dataset test)
--   [ ] T037--T039 backend
+-   [x] T037 Audit service (centralized action names + secret
+        redaction; added missing config audit calls; refactored
+        Project/JobService to use it)
+-   [ ] T038--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

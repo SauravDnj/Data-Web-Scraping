@@ -12,7 +12,7 @@ tests: 0% V1: 0%
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
-  3 Backend            IN_PROGRESS        70%
+  3 Backend            IN_PROGRESS        80%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
@@ -23,13 +23,15 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T037 --- Audit service. (T027 PARTIAL, T012/T013 still open.)
+T038 --- Authentication. (T027 PARTIAL, T012/T013 still open. Likely
+the real next hard stop for the SQLite-substitution approach.)
 
 ## Last verified milestone
 
-T036 --- Record service complete and verified (158 passed, 1 skipped
-as expected), still no live MySQL needed. Synthetic 250-record
-pagination test proves safe, capped, project-scoped access.
+T037 --- Audit service complete and verified (164 passed, 1 skipped
+as expected), still no live MySQL needed. Centralized action names +
+secret redaction; found and filled a real gap (ConfigurationService
+had no audit calls).
 
 ## Rule
 

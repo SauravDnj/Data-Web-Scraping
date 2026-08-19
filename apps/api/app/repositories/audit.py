@@ -18,6 +18,15 @@ class AuditLogRepository(Protocol):
         offset: int = 0,
     ) -> Page[AuditLogEntry]: ...
 
+    def list_for_entity(
+        self,
+        entity_type: str,
+        entity_id: int,
+        *,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> Page[AuditLogEntry]: ...
+
 
 class SqlAlchemyAuditLogRepository(SqlAlchemyRepository[AuditLogRow, AuditLogEntry]):
     """Append-only — deliberately no update/delete method. Audit
@@ -58,6 +67,26 @@ class SqlAlchemyAuditLogRepository(SqlAlchemyRepository[AuditLogRow, AuditLogEnt
         statement = (
             select(AuditLogRow)
             .where(AuditLogRow.user_id == user_id)
+            .order_by(AuditLogRow.created_at.desc())
+        )
+        return self._paginate(statement, limit=limit, offset=offset)
+
+    def list_for_entity(
+        self,
+        entity_type: str,
+        entity_id: int,
+        *,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> Page[AuditLogEntry]:
+        """The full history of one entity — "what happened to this
+        project/job", not scoped to a single actor."""
+        statement = (
+            select(AuditLogRow)
+            .where(
+                AuditLogRow.entity_type == entity_type,
+                AuditLogRow.entity_id == entity_id,
+            )
             .order_by(AuditLogRow.created_at.desc())
         )
         return self._paginate(statement, limit=limit, offset=offset)

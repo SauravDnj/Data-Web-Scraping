@@ -15,15 +15,15 @@ from app.domain.records import Record
 from app.repositories.audit import SqlAlchemyAuditLogRepository
 from app.repositories.projects import SqlAlchemyProjectRepository
 from app.repositories.records import MAX_RECORD_PAGE_LIMIT, SqlAlchemyRecordRepository
+from app.services.audit import AuditService
 from app.services.errors import NotFoundError, PermissionDeniedError
 from app.services.projects import ProjectService
 from app.services.records import RecordService
 
 
 def _make_services(session):
-    projects = ProjectService(
-        SqlAlchemyProjectRepository(session), SqlAlchemyAuditLogRepository(session)
-    )
+    audit = AuditService(SqlAlchemyAuditLogRepository(session))
+    projects = ProjectService(SqlAlchemyProjectRepository(session), audit)
     records = RecordService(SqlAlchemyRecordRepository(session), projects)
     return projects, records
 
