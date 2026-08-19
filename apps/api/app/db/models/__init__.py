@@ -1,2 +1,6 @@
-# Business models are added by their respective tasks (T022-T026), not
-# here — this file exists only so `app.db.models` is a valid package.
+# Import every model module here so Base.metadata sees it (required
+# for Alembic autogenerate — see database/migrations/env.py) and so
+# `from app.db.models import User` works. Further models land T023-T026.
+from app.db.models.user import User, UserStatus
+
+__all__ = ["User", "UserStatus"]

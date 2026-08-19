@@ -2,32 +2,25 @@
 
 ## Active task
 
-T022 --- Identity database.
+T023 --- Project database.
 
 ## Previous task
 
-T021 --- Alembic foundation. COMPLETE. Turned out solvable without
-live MySQL too — the migration harness itself was verifiable against
-a temporary SQLite file (empty schema so far, so dialect didn't
-matter). See `docs/18_COMPLETED_WORK.md` and
-`database/migrations/env.py`.
+T022 --- Identity database. COMPLETE — also verifiable without live
+MySQL (SQLite substitution held up even for a real business table),
+and it surfaced a genuine cross-dialect bug (BigInteger PKs don't
+autoincrement under SQLite) that's now fixed via `BigIntegerPK` in
+`app/db/base.py`. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create the identity/users table and its first real migration.
-
-## Likely actual hard stop
-
-T022 is the first task creating real business schema. Its acceptance
-criteria will presumably want a real migration verified against a
-real database, and there's no more "no schema yet, dialect doesn't
-matter" escape hatch like T020/T021 had. This is probably where
-progress genuinely pauses for T012, though will read the exact T022
-prompt before concluding that.
+Create `projects` and `collection_configs` tables + migration, per
+`docs/04_DATABASE_DESIGN.md`. Use `BigIntegerPK` from `app.db.base`
+for all `id` columns — don't redeclare `BigInteger` directly.
 
 ## Not yet in scope
 
--   project/job/record/ops tables (T023-T026);
+-   job/record/ops tables (T024-T026);
 -   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
@@ -35,8 +28,14 @@ prompt before concluding that.
 
 ## Handoff
 
-After T022: T023 → ... all needing real MySQL. Return to T012/T013 as
-soon as possible.
+After T023: T024 (job DB) → T025 (record DB) → T026 (ops DB) → T027
+(indexes/constraints review) → T030 (domain models). Each of these has
+so far been verifiable without live MySQL via the SQLite-substitution
+pattern — keep applying it, but stay alert for more cross-dialect
+surprises like the BigInteger one. Return to T012/T013 as soon as
+possible regardless, since eventually (deduplication, JSON columns,
+real query performance) MySQL-specific behavior will need real
+verification.
 
 ## Open blockers (user action needed)
 

@@ -1,4 +1,4 @@
-from sqlalchemy import MetaData
+from sqlalchemy import BigInteger, Integer, MetaData
 from sqlalchemy.orm import DeclarativeBase
 
 # Explicit, predictable constraint/index names instead of
@@ -15,3 +15,12 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+# Every table's `id` column should use this type. BIGINT everywhere
+# per docs/04_DATABASE_DESIGN.md, but SQLite only auto-increments a
+# primary key typed exactly INTEGER (not BIGINT) — this is
+# SQLAlchemy's documented cross-dialect fix: real BIGINT on MySQL,
+# plain INTEGER (still autoincrement-compatible) on SQLite, which is
+# what this project's tests use in place of a live MySQL connection.
+BigIntegerPK = BigInteger().with_variant(Integer(), "sqlite")

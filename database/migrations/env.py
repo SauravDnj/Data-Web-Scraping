@@ -4,9 +4,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # Requires apps/api's environment (editable-installed `app` package) —
-# see database/migrations/README.md for the exact invocation. Also
-# import app.db.models here (currently empty) once T022+ add real
-# model modules, so autogenerate can see them.
+# see database/migrations/README.md for the exact invocation.
+import app.db.models  # noqa: F401  - registers models on Base.metadata
 from app.core.config import get_settings
 from app.db.base import Base
 

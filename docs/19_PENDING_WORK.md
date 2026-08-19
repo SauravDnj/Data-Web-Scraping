@@ -21,8 +21,11 @@
         connection-error test)
 -   [x] T021 Alembic foundation (done without live MySQL, same
         reasoning as T020 — see docs/16_MEMORY.md)
--   [ ] T022--T027 database (first real business tables — will need
-        real MySQL to verify; likely blocked on T012)
+-   [x] T022 Identity database (done without live MySQL; found/fixed a
+        real BigInteger-vs-SQLite autoincrement bug along the way —
+        see docs/16_MEMORY.md for the `BigIntegerPK` fix every future
+        table must reuse)
+-   [ ] T023--T027 database (project/job/record/ops tables)
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline

@@ -7,14 +7,14 @@ being changed.
 
 ## Active task
 
-T022 (T000-T002, T010, T011, T014, T015, T020, T021 complete; T012/T013
-prepared but blocked on user action — see docs/18_COMPLETED_WORK.md).
-T022 (first real business table) likely needs T012 to fully verify.
+T023 (T000-T002, T010, T011, T014, T015, T020, T021, T022 complete;
+T012/T013 prepared but blocked on user action — see
+docs/18_COMPLETED_WORK.md).
 
 ## Active files
 
 ``` text
-None yet — T022 has not started.
+None yet — T023 has not started.
 ```
 
 ## Rule

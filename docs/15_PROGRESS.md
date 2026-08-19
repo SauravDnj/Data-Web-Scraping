@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        25%
+  2 Database           IN_PROGRESS        35%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,15 +23,14 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T022 --- Identity database. (T012/T013 open, blocked on user action;
-T022 is the first task likely to genuinely require T012 to finish.)
+T023 --- Project database. (T012/T013 open, blocked on user action.)
 
 ## Last verified milestone
 
-T021 --- Alembic foundation complete and verified (19 passed, 1
-skipped as expected) without needing live MySQL — full upgrade/
-downgrade round-trip proven against a temporary SQLite file, both
-manually and via an automated test.
+T022 --- Identity database complete and verified (24 passed, 1 skipped
+as expected) without live MySQL. Found and fixed a real cross-dialect
+bug (BigInteger PKs don't autoincrement under SQLite) — see
+docs/16_MEMORY.md for the BigIntegerPK fix all future tables reuse.
 
 ## Rule
 
