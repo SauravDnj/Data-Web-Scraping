@@ -3,29 +3,12 @@ normalization — against SQLite in-memory (same rationale as
 tests/unit/test_db_session.py; a real migration-applied users table is
 proven separately in tests/integration/test_migrations.py)."""
 
-from collections.abc import Iterator
-
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.pool import StaticPool
 
 from app.core.security import hash_password, normalize_email, verify_password
-from app.db.base import Base
 from app.db.models import User, UserStatus
-from app.db.session import build_engine, build_session_factory, session_scope
-
-
-@pytest.fixture
-def sqlite_engine() -> Iterator[object]:
-    engine = build_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-    )
-    Base.metadata.create_all(engine)
-    yield engine
-    Base.metadata.drop_all(engine)
-    engine.dispose()
+from app.db.session import build_session_factory, session_scope
 
 
 def _make_user(email: str, plain_password: str = "correct horse battery staple") -> User:

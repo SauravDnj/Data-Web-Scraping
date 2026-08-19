@@ -76,3 +76,20 @@ def test_users_table_is_created_and_removed_by_migration(tmp_path):
 
     command.downgrade(config, "base")
     assert "users" not in _table_names(db_path)
+
+
+def test_project_and_config_tables_are_created_and_removed_by_migration(tmp_path):
+    """T023: the migration creates projects/collection_configs with
+    real foreign keys and the (project_id, version) unique constraint
+    — constraint-level behavior itself is covered thoroughly by the
+    ORM tests in tests/unit/test_project_and_config_models.py; this
+    just proves the migration DDL produces both tables."""
+    db_path = tmp_path / "projects_migration_smoke.db"
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+
+    command.upgrade(config, "head")
+    assert {"projects", "collection_configs"} <= _table_names(db_path)
+
+    command.downgrade(config, "base")
+    assert {"projects", "collection_configs"}.isdisjoint(_table_names(db_path))

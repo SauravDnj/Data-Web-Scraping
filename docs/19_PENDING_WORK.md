@@ -25,7 +25,9 @@
         real BigInteger-vs-SQLite autoincrement bug along the way —
         see docs/16_MEMORY.md for the `BigIntegerPK` fix every future
         table must reuse)
--   [ ] T023--T027 database (project/job/record/ops tables)
+-   [x] T023 Project database (found/fixed SQLite FK-enforcement gap
+        too; sqlite_engine fixture centralized in tests/unit/conftest.py)
+-   [ ] T024--T027 database (job/record/ops tables, index review)
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline

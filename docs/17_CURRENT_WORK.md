@@ -2,25 +2,25 @@
 
 ## Active task
 
-T023 --- Project database.
+T024 --- Job database.
 
 ## Previous task
 
-T022 --- Identity database. COMPLETE — also verifiable without live
-MySQL (SQLite substitution held up even for a real business table),
-and it surfaced a genuine cross-dialect bug (BigInteger PKs don't
-autoincrement under SQLite) that's now fixed via `BigIntegerPK` in
-`app/db/base.py`. See `docs/18_COMPLETED_WORK.md`.
+T023 --- Project database. COMPLETE. Found/fixed a second real
+cross-dialect gap (SQLite doesn't enforce FKs without a pragma) —
+fixed at the engine level in `app/db/session.py`, applies
+automatically to every future SQLite-backed test. See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create `projects` and `collection_configs` tables + migration, per
-`docs/04_DATABASE_DESIGN.md`. Use `BigIntegerPK` from `app.db.base`
-for all `id` columns — don't redeclare `BigInteger` directly.
+Create `jobs` and `job_runs` tables + migration, with metrics and
+lifecycle fields, per `docs/04_DATABASE_DESIGN.md`. Use `BigIntegerPK`
+for `id` columns (and matching type for FK columns pointing at them).
 
 ## Not yet in scope
 
--   job/record/ops tables (T024-T026);
+-   record/ops tables (T025-T026);
 -   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
@@ -28,14 +28,11 @@ for all `id` columns — don't redeclare `BigInteger` directly.
 
 ## Handoff
 
-After T023: T024 (job DB) → T025 (record DB) → T026 (ops DB) → T027
-(indexes/constraints review) → T030 (domain models). Each of these has
-so far been verifiable without live MySQL via the SQLite-substitution
-pattern — keep applying it, but stay alert for more cross-dialect
-surprises like the BigInteger one. Return to T012/T013 as soon as
-possible regardless, since eventually (deduplication, JSON columns,
-real query performance) MySQL-specific behavior will need real
-verification.
+After T024: T025 (record DB) → T026 (ops DB) → T027 (indexes/
+constraints review) → T030 (domain models). Two real cross-dialect
+bugs found so far this way (BigInteger autoincrement, FK enforcement)
+— keep applying the SQLite-substitution pattern, but stay alert for
+more. Return to T012/T013 as soon as possible regardless.
 
 ## Open blockers (user action needed)
 

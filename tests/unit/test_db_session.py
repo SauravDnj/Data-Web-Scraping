@@ -3,15 +3,12 @@ engine/session/Base/naming-convention wiring itself is correct,
 independent of which database dialect is behind it. MySQL-specific
 verification lives in tests/integration/test_db_mysql.py."""
 
-from collections.abc import Iterator
-
 import pytest
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.session import build_engine, build_session_factory, session_scope
+from app.db.session import build_session_factory, session_scope
 
 
 class _Widget(Base):
@@ -22,21 +19,6 @@ class _Widget(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True)
-
-
-@pytest.fixture
-def sqlite_engine() -> Iterator[object]:
-    # StaticPool + check_same_thread=False keeps the same in-memory
-    # database alive across connections within this test.
-    engine = build_engine(
-        "sqlite:///:memory:",
-        poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
-    )
-    Base.metadata.create_all(engine)
-    yield engine
-    Base.metadata.drop_all(engine)
-    engine.dispose()
 
 
 def test_temporary_schema_can_be_created_and_used(sqlite_engine):

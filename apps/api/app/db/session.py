@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,7 +16,20 @@ def build_engine(
     """Factory, not a singleton — lets tests build an isolated engine
     (e.g. SQLite in-memory) without touching the app's cached one."""
     engine_kwargs.setdefault("pool_pre_ping", True)
-    return create_engine(database_url, echo=echo, **engine_kwargs)
+    engine = create_engine(database_url, echo=echo, **engine_kwargs)
+
+    if engine.dialect.name == "sqlite":
+        # SQLite does not enforce foreign keys unless told to, per
+        # connection — MySQL always does. Without this, SQLite-backed
+        # tests would silently accept orphaned foreign keys and give
+        # false confidence.
+        @event.listens_for(engine, "connect")
+        def _enable_sqlite_foreign_keys(dbapi_connection: Any, _: Any) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+    return engine
 
 
 @lru_cache

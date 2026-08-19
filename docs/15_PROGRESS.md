@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        35%
+  2 Database           IN_PROGRESS        45%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,14 +23,13 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T023 --- Project database. (T012/T013 open, blocked on user action.)
+T024 --- Job database. (T012/T013 open, blocked on user action.)
 
 ## Last verified milestone
 
-T022 --- Identity database complete and verified (24 passed, 1 skipped
-as expected) without live MySQL. Found and fixed a real cross-dialect
-bug (BigInteger PKs don't autoincrement under SQLite) — see
-docs/16_MEMORY.md for the BigIntegerPK fix all future tables reuse.
+T023 --- Project database complete and verified (32 passed, 1 skipped
+as expected) without live MySQL. Found and fixed a second cross-dialect
+bug (SQLite doesn't enforce FKs by default) at the engine level.
 
 ## Rule
 
