@@ -2,38 +2,38 @@
 
 ## Active task
 
-T042 --- Google client.
+T043 --- Google response mapper.
 
 ## Previous task
 
-T041 --- Google configuration. COMPLETE —
-`app/providers/google_maps/config.py`: `GoogleMapsConfigValidator`,
-the first real (non-fake) `ProviderConfigValidator` plugged into T034's
-`ConfigurationService`. Selected operation: Places API (New) Text
-Search — resolved as a design decision, recorded for T042 to build
-against. Field names/limits verified against Google's live docs on
-2026-08-20 (fetched, not recalled). 19 new tests, including one proving
-docs/07's own example `max_results: 100` is correctly rejected (40 over
-Google's real 60-result cap). T040 --- Provider interface, T039 ---
-Authorization, T038 --- Authentication all complete before it. See
-`docs/18_COMPLETED_WORK.md`.
+T042 --- Google client. COMPLETE — `app/providers/google_maps/client.py`:
+`GoogleMapsClient` (real HTTP boundary against Places API (New) Text
+Search), `GoogleMapsApiError` (structured, for T044 to classify). httpx
+promoted from dev-only to a real runtime dependency. Retry only on
+transport/5xx failures, never on 4xx (auth/quota/rate) — those
+propagate for job-level retry instead, per docs/07's "never bypass a
+denial" rule. All 17 new tests use `httpx.MockTransport` — no real
+network call, no real credentials. T041 --- Google configuration, T040
+--- Provider interface, T039 --- Authorization, T038 ---
+Authentication all complete before it. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement the real Google Maps Platform HTTP client boundary (read
-`docs/T042_PROMPT.md` before assuming scope) — server-side credential
-loading (`Settings.google_maps_api_key`, T014), request timeout,
-documented-transient-error retry, request construction (translating
-T041's snake_case config into the real camelCase Places API (New) Text
-Search body + `X-Goog-FieldMask` header), response parsing, pagination
-(`pageToken`/`nextPageToken`, up to the 60-result cap T041 already
-validates against), structured provider errors (map into T040's
-`ProviderErrorCategory`), credential redaction from logs, dependency
-injection so tests never need a live API key. Must NOT bypass CAPTCHA,
-evade quotas, rotate proxies, use fake credentials, or collect private
-data (T042's explicit DO NOT list) — acceptance is mock-based (verify
-request construction/response handling), no real credentials
-committed or used in the automated suite.
+Convert Google's raw Text Search response items (the dicts
+`GoogleMapsClient.search_text()` yields) into the platform's normalized
+internal record representation (read `docs/T043_PROMPT.md` before
+assuming scope) — map each supported field explicitly (no inventing
+fields not actually in the response), preserve the provider identifier
+(`place.id`) and a source reference, normalize types, handle missing
+fields gracefully, attach a collection timestamp and project/job
+context. This is very likely where `app.domain.provider_contracts.
+NormalizedItem` (T040, field names already matching `Record.
+provider_record_id`/`Record.data`) gets its first real producer, and
+where `ProviderAdapter.normalize()` (T040's Protocol) gets a concrete
+Google implementation. Fixture-based tests (real captured/synthetic
+Google response shapes) — same fixture must always produce the same
+internal record deterministically (T043's literal acceptance
+criterion), plus explicit tests for malformed responses.
 
 ## Not yet in scope
 

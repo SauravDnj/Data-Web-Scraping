@@ -70,7 +70,11 @@
         first real, non-fake `ProviderConfigValidator`; Places API
         (New) Text Search selected + verified against live Google docs
         on 2026-08-20 — see docs/16_MEMORY.md)
--   [ ] T042--T045 provider (Google-specific)
+-   [x] T042 Google client (`GoogleMapsClient` — real HTTP boundary,
+        retry policy never bypasses auth/quota/rate denials, full
+        pagination; all tests use `httpx.MockTransport`, no live
+        credentials — see docs/16_MEMORY.md)
+-   [ ] T043--T045 provider (Google-specific)
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

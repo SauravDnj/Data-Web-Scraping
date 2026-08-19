@@ -69,10 +69,10 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T042 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T041
+T043 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T042
 complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T041 detail; this header is not
+dated sections further down for T030-T042 detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
 authoritative up-to-the-minute status.)
 
@@ -695,6 +695,91 @@ criterion.
 
 Verified locally: 216 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (69 source files).
+
+## Google client (T042) — current task now T043
+
+`app/providers/google_maps/client.py`: `GoogleMapsClient` — the real
+HTTP boundary against `POST
+https://places.googleapis.com/v1/places:searchText` (httpx 0.28.1,
+newly promoted from a dev-only dependency to a real
+`[project.dependencies]` entry in `apps/api/pyproject.toml`, since it's
+now used at runtime, not just by `TestClient` in tests). Owns exactly
+one concern — talking to Google — and deliberately does NOT validate
+configs (T041 already did) or classify errors into
+`ProviderErrorCategory` (T044's job); `GoogleMapsApiError` is the
+stable, structured shape T044 will classify.
+
+**Retry policy, a deliberate design decision worth remembering**: only
+transport failures and HTTP 5xx are retried automatically inside this
+client (`max_retries`, default 2, no real backoff delay needed at this
+layer — these are simple immediate-retry-on-infra-hiccup cases, not
+policy-sensitive). **4xx responses (auth/invalid-request/quota/rate)
+are never retried here** — docs/07's "Important rule" (never bypass a
+quota/rate/authorization/policy denial) means an immediate in-client
+retry with no real elapsed time would look exactly like bypassing;
+those failures propagate as `GoogleMapsApiError` for the *job*-level
+retry path (`JobService.retry_job`, T035, already exists) to decide
+about later, with real time between attempts. Verified directly:
+`test_authentication_error_is_never_retried`/
+`test_quota_error_is_never_retried` assert `call_count == 1`.
+
+**Field mask construction**: T041's `config["fields"]` (unprefixed,
+e.g. `"displayName"`) get prefixed to Google's real
+`"places.displayName"` syntax here, plus `"places.id"` (always, even
+if not requested — normalize()/T043 will need *something* to identify
+the raw item by) and `"nextPageToken"` (needed to know if another page
+exists) are always appended — this app-level config vs. real Google
+request-body translation boundary (T041 validates the former, T042
+builds the latter) is deliberate, not accidental duplication.
+
+**Pagination**: loops requesting `min(20, remaining)`-sized pages
+(Google's real per-page cap) until either the config's `max_results`
+(default `MAX_RESULT_COUNT` = 60, from T041's config module — reused,
+not re-declared) is reached or Google stops returning `nextPageToken`.
+Lazy generator — a caller consuming only the first few items never
+triggers a second page request.
+
+**Usage/quota metadata (item 7)**: verified against the same live
+Google docs fetched for T041 that Text Search (New) responses carry no
+documented per-call quota/usage-remaining field or header — recorded
+as an honest "not available", not a gap; quota exhaustion surfaces via
+the structured-error path (`RESOURCE_EXHAUSTED` status) instead, for
+T044 to classify.
+
+**Credential loading (item 1) — deliberately minimal, not
+speculative**: `GoogleMapsClient.__init__` requires `api_key: str`
+(never optional, never read from a request body); no FastAPI
+dependency/factory function wires it to `Settings.
+google_maps_api_key` yet, because nothing consumes this client yet
+(same reasoning as T041's validator having no route to attach to —
+that wiring belongs to whichever task first actually calls this
+client, likely the worker at T060+). `http_client: httpx.Client | None`
+is the injection point (item 10) — every test uses
+`httpx.MockTransport`, never a real network call, matching the literal
+T042 acceptance criterion ("Mock tests verify request construction and
+response handling; no real credentials are committed" —
+`test_api_key_never_appears_in_a_raised_error_message` checks this
+directly, not just by absence of a real key in the repo).
+
+17 new tests (`tests/unit/test_google_maps_client.py`): endpoint URL +
+credential header, exact field-mask string, request body field mapping
+(query/location/radius/omitted-when-absent), single-page yield,
+early-stop once `max_results` is reached mid-page, multi-page
+pagination (page-token propagation verified on the wire, not just the
+yielded count), 5xx retry-then-succeed and retry-exhausted, transport-
+error retry-then-succeed and retry-exhausted, auth/quota errors proven
+never retried, and the credential-never-leaks check.
+
+**Side note, unrelated to T042's own logic but caught while re-running
+`pip install -e ".[dev]"` after moving `httpx` to real dependencies**:
+`bcrypt` was pinned `>=4.1,<5.0` in `pyproject.toml` but the installed
+venv actually had `5.0.0` (outside that range) — the reinstall
+corrected it to `4.3.0`. Not a T042 bug; just a pre-existing
+unenforced-until-now pin mismatch, worth knowing if bcrypt behavior
+ever seems to have silently changed underfoot again.
+
+Verified locally: 233 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (70 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

@@ -7,14 +7,22 @@ being changed.
 
 ## Active task
 
-T042 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T041
+T043 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T042
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T042 has not started.
+None yet — T043 has not started.
+```
+
+## T042 files (complete — for reference)
+
+``` text
+apps/api/app/providers/google_maps/client.py   (new)
+apps/api/pyproject.toml                        (modified — httpx moved to real deps)
+tests/unit/test_google_maps_client.py          (new)
 ```
 
 ## T041 files (complete — for reference)

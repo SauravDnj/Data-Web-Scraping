@@ -853,3 +853,52 @@ Evidence:
 Next: T042 --- Google client (the real HTTP client boundary — request
 construction/response parsing/pagination/retries against mocked
 responses, no live credentials in the automated suite).
+
+### T042 --- Google client
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/providers/google_maps/client.py`: `GoogleMapsClient` — the
+    real HTTP boundary against `POST
+    https://places.googleapis.com/v1/places:searchText` (httpx,
+    promoted from a dev-only to a real `[project.dependencies]` entry
+    in `apps/api/pyproject.toml`). `GoogleMapsApiError` — the one
+    structured exception type this client ever raises, for T044 to
+    classify later.
+-   Server-side credential loading: `api_key: str` required at
+    construction, never read from a request body. Request timeout
+    configurable. Retries only network-transport failures and HTTP 5xx
+    (genuine infra hiccups) — **4xx responses (auth/invalid-request/
+    quota/rate) are never retried inside this client**, a deliberate
+    decision matching docs/07's "never bypass a policy/quota/rate
+    denial" rule; those propagate for the job-level retry path
+    (`JobService.retry_job`, T035) to decide about later, with real
+    elapsed time between attempts.
+-   Request construction translates T041's snake_case app config into
+    Google's real camelCase body + `X-Goog-FieldMask` header (field
+    names prefixed with `places.`, plus `places.id` and
+    `nextPageToken` always included). Response parsing + pagination
+    (`pageToken`/`nextPageToken`) up to the `max_results` cap T041
+    already validates against (`MAX_RESULT_COUNT`, reused not
+    re-declared). Lazy generator — a caller consuming only the first
+    few items never triggers a later page.
+-   Usage/quota metadata: verified against Google's live docs (same
+    fetch as T041, 2026-08-20) that Text Search (New) responses carry
+    no documented per-call quota field/header — recorded as an honest
+    "not available"; quota exhaustion surfaces via the structured-error
+    path instead.
+-   Credential redaction: the API key is a request header, never
+    logged, never echoed into an error message — verified directly by
+    a dedicated test.
+-   Dependency injection: `http_client: httpx.Client | None` — every
+    one of the 17 new tests uses `httpx.MockTransport`, no real network
+    call, no real credentials anywhere in the suite (T042's literal
+    acceptance criterion).
+-   Verified locally: 233 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (70 source files).
+
+Next: T043 --- Google response mapper (convert raw Google Text Search
+items into the platform's normalized internal record representation —
+fixture-based, deterministic).
