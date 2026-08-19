@@ -7,13 +7,14 @@ being changed.
 
 ## Active task
 
-T024 (T000-T002, T010, T011, T014, T015, T020-T023 complete; T012/T013
+T025 (T000-T002, T010, T011, T014, T015, T020-T024 complete; T012/T013
 prepared but blocked on user action — see docs/18_COMPLETED_WORK.md).
+T025 (records/dedup) is likely where real MySQL becomes necessary.
 
 ## Active files
 
 ``` text
-None yet — T024 has not started.
+None yet — T025 has not started.
 ```
 
 ## Rule

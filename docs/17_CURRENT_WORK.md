@@ -2,25 +2,31 @@
 
 ## Active task
 
-T024 --- Job database.
+T025 --- Record database.
 
 ## Previous task
 
-T023 --- Project database. COMPLETE. Found/fixed a second real
-cross-dialect gap (SQLite doesn't enforce FKs without a pragma) —
-fixed at the engine level in `app/db/session.py`, applies
-automatically to every future SQLite-backed test. See
+T024 --- Job database. COMPLETE, done without live MySQL. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create `jobs` and `job_runs` tables + migration, with metrics and
-lifecycle fields, per `docs/04_DATABASE_DESIGN.md`. Use `BigIntegerPK`
-for `id` columns (and matching type for FK columns pointing at them).
+Create `records` and `record_provenance` tables + migration, with
+deterministic canonical-key deduplication support, per
+`docs/04_DATABASE_DESIGN.md`.
+
+## Read T025's exact prompt before assuming the usual pattern applies
+
+Two real cross-dialect bugs were found in T022/T023 by testing against
+SQLite instead of skipping verification — that pattern has held up
+through T024. But `canonical_key` uniqueness-at-project-scope and
+dedup behavior are the kind of thing worth confirming against real
+MySQL specifically. Check T025's literal acceptance criteria first;
+don't assume the SQLite shortcut still applies without checking.
 
 ## Not yet in scope
 
--   record/ops tables (T025-T026);
+-   ops tables (T026: exports/schedules/audit_logs);
 -   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
@@ -28,11 +34,10 @@ for `id` columns (and matching type for FK columns pointing at them).
 
 ## Handoff
 
-After T024: T025 (record DB) → T026 (ops DB) → T027 (indexes/
-constraints review) → T030 (domain models). Two real cross-dialect
-bugs found so far this way (BigInteger autoincrement, FK enforcement)
-— keep applying the SQLite-substitution pattern, but stay alert for
-more. Return to T012/T013 as soon as possible regardless.
+After T025: T026 (ops DB) → T027 (indexes/constraints review, needs
+real query plans) → T030 (domain models). Return to T012/T013 as soon
+as possible — T027 in particular cannot be honestly done without real
+MySQL.
 
 ## Open blockers (user action needed)
 

@@ -93,3 +93,17 @@ def test_project_and_config_tables_are_created_and_removed_by_migration(tmp_path
 
     command.downgrade(config, "base")
     assert {"projects", "collection_configs"}.isdisjoint(_table_names(db_path))
+
+
+def test_job_tables_are_created_and_removed_by_migration(tmp_path):
+    """T024: same pattern as T022/T023 — proves the migration DDL,
+    constraint-level behavior is covered in tests/unit/test_job_models.py."""
+    db_path = tmp_path / "jobs_migration_smoke.db"
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+
+    command.upgrade(config, "head")
+    assert {"jobs", "job_runs"} <= _table_names(db_path)
+
+    command.downgrade(config, "base")
+    assert {"jobs", "job_runs"}.isdisjoint(_table_names(db_path))

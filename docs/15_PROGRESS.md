@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        45%
+  2 Database           IN_PROGRESS        55%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,13 +23,14 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T024 --- Job database. (T012/T013 open, blocked on user action.)
+T025 --- Record database. (T012/T013 open, blocked on user action.
+This task is flagged as the likely real stopping point for the
+SQLite-substitution approach — see docs/16_MEMORY.md.)
 
 ## Last verified milestone
 
-T023 --- Project database complete and verified (32 passed, 1 skipped
-as expected) without live MySQL. Found and fixed a second cross-dialect
-bug (SQLite doesn't enforce FKs by default) at the engine level.
+T024 --- Job database complete and verified (40 passed, 1 skipped as
+expected) without live MySQL.
 
 ## Rule
 
