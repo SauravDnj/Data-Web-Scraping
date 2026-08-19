@@ -1325,3 +1325,57 @@ Evidence:
 Next: T061 --- Worker job execution (the first major vertical slice —
 full dequeue-to-acknowledge workflow using the fake provider before
 any real Google call).
+
+### T061 --- Worker job execution
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/jobs/execute_collection.py` (new subpackage):
+    `process_next_job()` — the full dequeue → atomically claim →
+    create `JobRun` → load exact config version → validate config →
+    call provider → normalize → validate items → dedup + persist
+    transactionally → update metrics → finalize status/errors → stop
+    heartbeat → acknowledge workflow, composing T038-T060. Uses only
+    the generic `ProviderAdapter` interface (T040) — zero Google-
+    specific imports, so the same function runs against the fake
+    provider or `GoogleMapsProvider` interchangeably.
+-   Three new `JobRepository` methods: `claim_queued_job()` (a real
+    atomic conditional `UPDATE jobs SET status='running' WHERE
+    status='queued'`, replacing the racy ORM get-then-mutate pattern
+    for this specific transition — the first genuinely
+    concurrency-safe job-status write in the codebase), `finalize_job()`
+    (status + error, one atomic write), `finish_run()` (heartbeat
+    bookend, not continuous polling — that's T062).
+-   Documented job-level status decision (COMPLETED/
+    PARTIALLY_COMPLETED/FAILED) matching docs/08's own worked example
+    exactly; per-record failures stay on individual outcome objects,
+    never condensed into `Job.error_code`.
+-   **Found and fixed a real test-helper bug**: `config_json or
+    {"query": ...}` silently replaced an intentionally-passed empty
+    `{}` with the default (Python falsy-value trap) — caught because
+    the "invalid configuration" test failed with the wrong status,
+    not because it was spotted by inspection.
+-   **Found and fixed a real mypy gap**: `Session.execute(update(...))`'s
+    `Result[Any]` return type has no `.rowcount` attribute statically —
+    fixed with a targeted `cast(CursorResult, ...)`, caught by the
+    separate `workers/pyproject.toml`-scoped mypy invocation.
+-   Extended `tests/unit/factories.make_config()` with an optional
+    `config_json` parameter (verified no prior caller existed before
+    changing its signature).
+-   8 new integration tests, including the literal acceptance
+    criterion (3 fake records → `completed` job + 3 `Record` rows,
+    re-verified from a fresh post-commit session), race-handling
+    (already-claimed job skipped and still acknowledged), invalid-
+    config/collect-exception failure paths, partial failure, and
+    queue-always-acknowledged.
+-   Verified locally: 397 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    8 files via the separate `workers/pyproject.toml` invocation).
+
+**"The first major vertical slice" is done** — every layer built this
+session now works together end-to-end for one real job.
+
+Next: T062 --- Worker heartbeat (continuous liveness signal during
+execution, stale-run detection, healthy jobs never falsely recovered).

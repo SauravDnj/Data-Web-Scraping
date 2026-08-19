@@ -2,44 +2,42 @@
 
 ## Active task
 
-T061 --- Worker job execution (the first major vertical slice).
+T062 --- Worker heartbeat.
 
 ## Previous task
 
-T060 --- Redis queue. COMPLETE — `workers/queue.py` extended (not a
-new file — T015 left it as a placeholder for exactly this) with
-`JobQueue` (Protocol) + `RedisJobQueue` (BLMOVE-based reliable-queue
-pattern: dequeue moves into an in-flight list, acknowledge removes it,
-requeue moves it back — a crashed worker never silently loses a job
-ID). Payload is always a bare job ID, never job details. **Decided and
-verified a real Redis-testing strategy before writing any code**:
-added `fakeredis` (dev-only) as a faithful in-memory Redis substitute,
-same role SQLite plays for MySQL — sanity-checked its real command
-behavior first, not assumed. Fixed two real redis-py mypy stub
-awkwardnesses (a `float` timeout stub-typed as `int`; sync-client
-methods typed as returning `X | Awaitable[X]`) with targeted
-`cast()`/`type: ignore`, not blanket suppression. 11 new tests. **Phase
-6 (Worker) now started.** See `docs/18_COMPLETED_WORK.md`.
+T061 --- Worker job execution. COMPLETE — "the first major vertical
+slice": `workers/jobs/execute_collection.py`'s `process_next_job()`
+composes T038-T060 into the full dequeue→claim→run→persist→metrics→
+finalize→acknowledge workflow for one job, using only the generic
+`ProviderAdapter` interface (zero Google-specific imports). Three new
+`JobRepository` methods: `claim_queued_job()` (a real atomic
+conditional `UPDATE`, replacing the racy ORM get-then-mutate pattern
+for this one transition), `finalize_job()`, `finish_run()`. Job-level
+status decision (COMPLETED/PARTIALLY_COMPLETED/FAILED) documented and
+tested against docs/08's own worked example. Found and fixed a real
+test-helper bug (`or` silently treating an intentional `{}` as "use
+the default") and a real mypy gap (`Result[Any]` needing a
+`CursorResult` cast for `.rowcount`). 8 new integration tests,
+including the literal acceptance criterion (3 fake records → completed
+job + 3 records, re-verified from a fresh post-commit session). See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Build the complete worker workflow end-to-end, using T040's
-`FakeProviderAdapter` first, before any real Google call (read
-`docs/T061_PROMPT.md` before assuming scope — 17 IMPLEMENT items, "the
-first major vertical slice") — this is where every piece built across
-T038-T060 finally gets composed together for real: dequeue (T060) →
-atomically claim the queued job (docs/09's `UPDATE ... WHERE
-status='queued'` claim pattern — not yet built anywhere) → create a
-`JobRun` + status→running (T024/T032) → start a heartbeat → load the
-exact active configuration version (T034) → validate it (T041-shaped,
-but via the generic `ProviderAdapter.validate_config`, T040) → call
-`ProviderAdapter.collect()`/`normalize()` (T040, fake provider for
-this task) → Stage 3-6 pipeline (T050-T053) → persist transactionally
-(T054) → update metrics (T055) → finalize job status (via the T031
-state machine) → record errors → stop heartbeat → acknowledge the
-queue message (T060). Acceptance: a fake provider yielding 3 records
-produces a `completed` job and exactly 3 `Record` rows — a genuine,
-observable end-to-end proof, not per-piece unit tests alone.
+Make worker liveness observable and recoverable (read
+`docs/T062_PROMPT.md` before assuming scope) — turn T061's one-time
+heartbeat bookend (`JobRun.heartbeat_at` set at run creation, touched
+once more at `finish_run()`) into a real *continuously updated* signal
+during execution, define the heartbeat interval and the stale
+threshold, detect stale job runs (a run whose `heartbeat_at` is older
+than the threshold while still `RUNNING` — presumably a crashed
+worker), and prove a *healthy* long-running job is never mistakenly
+flagged stale. Acceptance: "a stopped worker becomes detectable as
+stale without incorrectly recovering healthy jobs" — needs tests with
+controlled/injected time (matching this whole session's "never call
+`datetime.now()` inside business logic, take time as a parameter"
+discipline), not real sleeps.
 
 ## Not yet in scope
 

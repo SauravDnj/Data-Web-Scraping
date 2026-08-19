@@ -113,7 +113,11 @@
 -   [x] T060 Redis queue (`workers/queue.py` — `JobQueue`/
         `RedisJobQueue`, BLMOVE reliable-queue pattern, `fakeredis`
         adopted as a real testing substitute — see docs/16_MEMORY.md)
--   [ ] T061--T065 worker
+-   [x] T061 Worker job execution (`workers/jobs/execute_collection.py`
+        — the first major vertical slice, dequeue-to-acknowledge
+        proven end-to-end with the fake provider; 3 new atomic
+        `JobRepository` methods — see docs/16_MEMORY.md)
+-   [ ] T062--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality

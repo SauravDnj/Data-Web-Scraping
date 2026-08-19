@@ -7,16 +7,27 @@ being changed.
 
 ## Active task
 
-T061 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
-T012/T013 prepared but blocked on user action; T013's local-testing
-gap mitigated via `fakeredis`). Phase 4 (Provider) and Phase 5 (Data
-pipeline) both fully complete. Phase 6 (Worker) in progress.
+T062 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T061 complete; T027 PARTIAL — see
+database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
+action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
+(Provider) and Phase 5 (Data pipeline) both fully complete. Phase 6
+(Worker) in progress — first vertical slice (T061) working.
 
 ## Active files
 
 ``` text
-None yet — T061 has not started.
+None yet — T062 has not started.
+```
+
+## T061 files (complete — for reference)
+
+``` text
+workers/jobs/__init__.py                            (new)
+workers/jobs/execute_collection.py                   (new)
+apps/api/app/repositories/jobs.py                     (modified — claim_queued_job/finalize_job/finish_run added)
+tests/unit/factories.py                               (modified — make_config gained an optional config_json param)
+tests/integration/test_execute_collection.py          (new)
 ```
 
 ## T060 files (complete — for reference)

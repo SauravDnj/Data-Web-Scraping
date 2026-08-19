@@ -25,12 +25,17 @@ def make_project(session, user_id: int, name: str = "My Project") -> Project:
 
 
 def make_config(
-    session, project_id: int, *, version: int = 1, is_active: bool = True
+    session,
+    project_id: int,
+    *,
+    version: int = 1,
+    is_active: bool = True,
+    config_json: dict | None = None,
 ) -> CollectionConfig:
     config = CollectionConfig(
         project_id=project_id,
         provider="google_maps",
-        config_json={},
+        config_json=config_json if config_json is not None else {},
         version=version,
         is_active=is_active,
     )

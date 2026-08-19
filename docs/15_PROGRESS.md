@@ -15,7 +15,7 @@ tests: 0% V1: 0%
   3 Backend            IN_PROGRESS        85%
   4 Provider           COMPLETE          100%
   5 Data pipeline      COMPLETE          100%
-  6 Worker             IN_PROGRESS        17%
+  6 Worker             IN_PROGRESS        33%
   7 Frontend           PENDING             0%
   8 Operations         PENDING             0%
   9 Quality            PENDING             0%
@@ -23,16 +23,18 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T061 --- Worker job execution. (T027 PARTIAL, T012 still open; T013
+T062 --- Worker heartbeat. (T027 PARTIAL, T012 still open; T013
 partly mitigated for testing via `fakeredis`, see docs/16_MEMORY.md.)
 
 ## Last verified milestone
 
-T060 --- Redis queue complete and verified (389 passed, 1 skipped as
-expected), still no live MySQL/Redis needed (`fakeredis` substitutes).
-Reliable-queue pattern (`BLMOVE` + in-flight list) in
-`workers/queue.py`. **Phase 6 (Worker) now started** — Phase 4
-(Provider) and Phase 5 (Data pipeline) both fully complete before it.
+T061 --- Worker job execution complete and verified (397 passed, 1
+skipped as expected), still no live MySQL/Redis needed. "The first
+major vertical slice" — `process_next_job()` proves the full
+dequeue-to-acknowledge workflow works end-to-end with a fake provider:
+3 fake records in, a `completed` job + 3 persisted records out. Every
+layer built this session (auth, provider, pipeline, queue) now works
+together for real, not just in isolated unit tests.
 
 ## Rule
 

@@ -69,13 +69,14 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T061 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T062 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060 complete — Phase 4 Provider and Phase 5 Data
-pipeline both fully done, Phase 6 Worker started. T012/T013 prepared
-but NOT verified — see below. See the dated sections further down for
-detail; this header is not updated inline each time, check
-docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
+T050-T055, and T060-T061 complete — Phase 4 Provider and Phase 5 Data
+pipeline both fully done, Phase 6 Worker's first vertical slice
+(T061) working end-to-end. T012/T013 prepared but NOT verified — see
+below. See the dated sections further down for detail; this header is
+not updated inline each time, check docs/17_CURRENT_WORK.md for the
+authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1435,6 +1436,109 @@ mypy invocation documented in `workers/README.md`).
 recovery, retry) will build the actual worker main-loop that calls
 `RedisJobQueue` + the full Phase 5 pipeline (T050-T055) + the provider
 adapter (T040-T045) together for the first time.
+
+## Worker job execution (T061) — current task now T062, "first major vertical slice" done
+
+`workers/jobs/execute_collection.py` (new subpackage,
+`docs/25_WORKER_FILE_PLAN.md`): `process_next_job()` — composes every
+piece built T038-T060 into the full dequeue-to-acknowledge workflow
+for exactly one job. Uses only the generic `ProviderAdapter` interface
+(T040) — zero Google-specific imports anywhere, so the exact same
+function runs against `FakeProviderAdapter` (this task's own
+acceptance test) or `GoogleMapsProvider` (T041-T045) interchangeably.
+`field_rules`/`provider_operation` are caller-supplied for exactly
+this reason (Google's own values live in
+`app.providers.google_maps.mapper`, not here).
+
+**Three new `JobRepository` methods, all genuinely required by T061's
+own items, not scope creep**:
+
+-   `claim_queued_job(job_id, *, started_at)` (item 2) — a REAL
+    conditional `UPDATE jobs SET status='running' WHERE id=? AND
+    status='queued'` (SQLAlchemy Core `update()`, not the ORM
+    get-then-mutate pattern `update_status()` uses). This is the first
+    genuinely atomic-under-concurrency write in the whole job-status
+    codepath — `update_status()`'s read-then-write has no protection
+    against two workers both observing `status=queued` before either
+    commits. The `WHERE` clause hardcodes exactly the one transition
+    this method performs, so it's exactly as safe as
+    `app.domain.job_state_machine.transition()` for this specific
+    case while also being atomic. Returns `None` (not an error) if
+    another worker already claimed it.
+-   `finalize_job(job_id, *, status, finished_at, error_code=None,
+    error_message=None)` (items 14-15 combined in one write — a
+    status can never show `FAILED` with no error detail yet, or vice
+    versa, if the process died mid-way).
+-   `finish_run(run_id, *, status, finished_at)` (item 16, "stop
+    heartbeat" — a bookend touch of `heartbeat_at`, not continuous
+    polling; that's T062's job, not built here since T061 doesn't
+    depend on T062).
+
+**Job-level status decision, a design decision this task had to
+make**: `total_units == 0` or `failed_units == 0` → `COMPLETED`;
+`failed_units > 0` and `successful_units == 0` → `FAILED` (nothing
+survived); otherwise → `PARTIALLY_COMPLETED` — matching
+`docs/08_DATA_PIPELINE_DEEP.md`'s own worked example exactly ("300
+successful, 150 skipped, 50 failed → partially_completed"). Per-record
+failure reasons stay on the individual `ValidationResult`/
+`PersistOutcome` objects; `Job.error_code`/`error_message` is reserved
+for a *whole-job* failure (config missing, config invalid, `collect()`
+itself raised) where one `ProviderError` genuinely describes
+everything — never condensed from many per-record failures.
+
+**Real bug found and fixed while writing the test helper, not the
+production code**: a test setup helper used `config_json or
+{"query": "coffee shops"}` to substitute a default when no override
+was given — but an explicitly-passed empty dict `{}` (needed for the
+"invalid configuration" test) is falsy in Python, so `or` silently
+replaced it with the valid default, making that test assert against
+the wrong scenario entirely (it initially failed with `COMPLETED`
+instead of the expected `FAILED`, which is exactly what caught this).
+Fixed with an explicit `is not None` check — the same "`or` for
+defaults is unsafe when a legitimate falsy value is a valid
+argument" class of bug worth remembering generally.
+
+**A second real mypy finding, fixed with a targeted cast, not
+suppressed**: `Session.execute(update(...))`'s return type
+(`Result[Any]`) doesn't statically expose `.rowcount` — cast to
+`sqlalchemy.CursorResult` (what it actually is at runtime for a Core
+DML statement) rather than adding a blanket `type: ignore`. Caught by
+the *separate* `workers/pyproject.toml`-scoped mypy invocation before
+the `apps/api`-scoped one flagged it too — both configs check
+`app/repositories/jobs.py` (via `mypy_path`), and this time both
+agreed once fixed.
+
+Extended `tests/unit/factories.make_config()` with an optional
+`config_json` parameter (backward-compatible — no prior caller existed
+outside this file, verified before changing it) so tests could supply
+a specific (valid or deliberately invalid) provider config.
+
+8 new tests (`tests/integration/test_execute_collection.py`,
+transactional-lifecycle placement matching T054/T055's precedent, with
+`fakeredis`-backed `RedisJobQueue`, T060): the literal T061 acceptance
+criterion (3 fake records → `COMPLETED` job + 3 `Record` rows, re-
+verified from a fresh post-commit session), empty-queue no-op,
+already-claimed-job skip-and-still-acknowledge (the race-handling
+proof), invalid-config fails without ever calling `collect()`, a
+`collect()`-level exception classified and recorded via the
+provider's own `classify_error()`, partial failure →
+`PARTIALLY_COMPLETED`, the `JobRun` created/finalized correctly, and
+the queue message always acknowledged even on total failure.
+
+Verified locally: 397 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 source files in
+`apps/api`; 8 source files via the separate `workers/pyproject.toml`
+mypy invocation).
+
+**"The first major vertical slice" is done** — every layer built this
+session (auth/authz, provider, data pipeline, queue) is now proven to
+work together end-to-end for one real job, not just in isolated unit
+tests. T062 (heartbeat), T063 (retry), T064 (?), T065 (recovery) will
+build the operational robustness around this core loop — real
+continuous heartbeat polling, stale-run detection, and wiring this
+into `worker_main.py`'s actual `while True` loop (not done in T061 —
+`process_next_job()` is a single-call primitive, deliberately not a
+running loop, so it stays independently testable).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
