@@ -14,6 +14,8 @@ class JobRepository(Protocol):
 
     def create(self, job: Job) -> Job: ...
 
+    def get_by_idempotency_key(self, idempotency_key: str) -> Job | None: ...
+
     def update_status(self, job_id: int, target: JobStatus) -> Job: ...
 
     def list_for_project(
@@ -57,6 +59,7 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
             finished_at=row.finished_at,
             error_code=row.error_code,
             error_message=row.error_message,
+            idempotency_key=row.idempotency_key,
         )
 
     def create(self, job: Job) -> Job:
@@ -71,10 +74,17 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
             records_created=job.counters.records_created,
             records_updated=job.counters.records_updated,
             records_rejected=job.counters.records_rejected,
+            idempotency_key=job.idempotency_key,
         )
         self._session.add(row)
         self._session.flush()
         return self._to_domain(row)
+
+    def get_by_idempotency_key(self, idempotency_key: str) -> Job | None:
+        row = self._session.scalar(
+            select(JobRow).where(JobRow.idempotency_key == idempotency_key)
+        )
+        return self._to_domain(row) if row is not None else None
 
     def update_status(self, job_id: int, target: JobStatus) -> Job:
         """Goes through app.domain.job_state_machine.transition() —

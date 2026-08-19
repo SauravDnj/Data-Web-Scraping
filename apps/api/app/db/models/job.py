@@ -54,6 +54,11 @@ class Job(Base):
     records_rejected: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # T035: a client-supplied key preventing duplicate job creation on
+    # retried requests. Unique, nullable (not every caller supplies one).
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
 
 
 class JobRun(Base):

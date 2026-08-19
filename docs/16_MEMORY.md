@@ -69,9 +69,12 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T027 --- Database indexes and constraints. PARTIAL, genuinely blocked
-on T012. (T000-T002, T010, T011, T014, T015, T020-T026 fully complete.
-T012/T013 prepared but NOT verified — see below.)
+T036 --- Record service. (T000-T002, T010, T011, T014, T015, T020-T026
+fully complete, T027 PARTIAL (see database/INDEX_REVIEW.md),
+T030-T035 complete. T012/T013 prepared but NOT verified — see below.
+See the dated sections further down for T030-T035 detail; this header
+is not updated inline each time, check docs/17_CURRENT_WORK.md for the
+authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -270,6 +273,57 @@ invalid config rejected (both generic and provider-delegated),
 
 Verified locally: 134 passed, 1 skipped (T012-gated), ruff clean,
 mypy clean (47 source files).
+
+## Job service (T035) — current task now T036
+
+`app/services/jobs.py` (`JobService`): `create_job()` is the one place
+"transactional" matters most — idempotency check, ownership +
+archived-project guard (`ProjectService.ensure_can_start_job`), active-
+config lookup (`ConfigurationService.get_active`), insert, and the
+DRAFT→QUEUED transition all happen against the same session, so the
+caller's `session_scope()` commits or rolls back all of it together.
+`cancel_job`/`pause_job`/`resume_job` just call
+`JobRepository.update_status()`, inheriting the T031 state-machine
+enforcement for free (no re-validation needed here).
+
+**Added `jobs.idempotency_key` (nullable, `UNIQUE`)** — a real schema
+change via `database/migrations/versions/0e4e1aa2581b_...py`.
+**This migration is the first ALTER-TABLE-with-constraint in the
+project and it failed outright on SQLite** (`NotImplementedError: No
+support for ALTER of constraints in SQLite dialect`) — SQLite can't
+alter a constraint directly, only Alembic's **batch mode**
+(`with op.batch_alter_table(...)`) handles it, via a copy-and-move
+strategy; on MySQL batch mode still just emits plain ALTER statements,
+so this costs nothing there. **Any future migration that alters an
+existing table's columns/constraints (not just CREATE TABLE) must use
+`batch_alter_table`, checked by actually running it against SQLite
+before assuming it works** — CREATE TABLE migrations (T021-T026) never
+exposed this because they don't ALTER anything.
+`tests/integration/test_migrations.py`'s new test round-trips
+upgrade→downgrade→upgrade→downgrade specifically to catch this class
+of bug permanently, not just check table existence like the earlier
+migration tests do.
+
+**`retry_job()` resolves a real tension**: T031 made `FAILED` terminal
+("a job that needs to run again is a new Job row, not a resurrected
+old one" — that decision predates T035 and is unchanged). So retry
+creates a **new** `Job` referencing the same project/config; the
+original stays `FAILED` forever. Gated by
+`app.domain.job_errors.is_retryable()` — a small, explicitly-interim
+retryable-error-class set (`transient_network`, `rate_limit`,
+`persistence`) that **T044 ("Provider error mapping") must reconcile
+with or replace**, not silently diverge from — same resolution pattern
+as T034's circular T040 dependency.
+
+14 new tests: creation (+ audit event), no-active-config rejection,
+archived-project rejection, idempotency dedup (same key → same job,
+different keys → different jobs), cancel/pause/resume (including pause
+illegal from QUEUED), retry (creates new job, original untouched,
+rejected when not FAILED, rejected when error class isn't retryable),
+not-found, cross-user denial.
+
+Verified locally: 148 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (49 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

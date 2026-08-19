@@ -70,6 +70,7 @@ class Job:
     finished_at: datetime | None = None
     error_code: str | None = None
     error_message: str | None = None
+    idempotency_key: str | None = None
 
 
 @dataclass(frozen=True)

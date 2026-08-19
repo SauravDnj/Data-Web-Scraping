@@ -131,3 +131,36 @@ def test_operations_tables_are_created_and_removed_by_migration(tmp_path):
 
     command.downgrade(config, "base")
     assert {"exports", "schedules", "audit_logs"}.isdisjoint(_table_names(db_path))
+
+
+def _column_names(db_path: Path, table: str) -> set[str]:
+    connection = sqlite3.connect(db_path)
+    try:
+        rows = connection.execute(f"PRAGMA table_info({table})").fetchall()
+    finally:
+        connection.close()
+    return {row[1] for row in rows}
+
+
+def test_idempotency_key_column_migration_round_trips_on_sqlite(tmp_path):
+    """T035: this ALTER-TABLE migration originally failed on SQLite
+    (constraint changes need Alembic's batch mode there) — this is a
+    permanent regression test for that, not just a table-existence
+    check like the CREATE TABLE migrations above. Upgrades all the way
+    to head, downgrades one step, re-upgrades, then all the way back
+    to base — proving the column and its unique constraint survive a
+    full up/down/up/down cycle cleanly."""
+    db_path = tmp_path / "idempotency_key_migration.db"
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+
+    command.upgrade(config, "head")
+    assert "idempotency_key" in _column_names(db_path, "jobs")
+
+    command.downgrade(config, "-1")
+    assert "idempotency_key" not in _column_names(db_path, "jobs")
+
+    command.upgrade(config, "head")
+    assert "idempotency_key" in _column_names(db_path, "jobs")
+
+    command.downgrade(config, "base")

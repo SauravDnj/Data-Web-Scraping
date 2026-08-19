@@ -46,7 +46,10 @@
         live MySQL needed)
 -   [x] T034 Configuration service (versioning/activation/validation,
         resolved a circular task-graph dependency — see docs/16_MEMORY.md)
--   [ ] T035--T039 backend
+-   [x] T035 Job service (transactional creation, idempotency, gated
+        retry — first ALTER-TABLE migration, needed Alembic batch mode
+        for SQLite; see docs/16_MEMORY.md)
+-   [ ] T036--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

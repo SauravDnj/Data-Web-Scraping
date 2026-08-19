@@ -586,3 +586,30 @@ Evidence:
 
 Next: T035 --- Job service (job creation/lifecycle commands, will use
 `ProjectService.ensure_can_start_job`).
+
+### T035 --- Job service
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/services/jobs.py` (`JobService`): transactional `create_job()`
+    (idempotency check, authorization, active-config lookup, insert,
+    QUEUED transition all in one session), `cancel_job`/`pause_job`/
+    `resume_job` (state-machine-enforced via `update_status`),
+    `retry_job` (creates a new job, original `FAILED` job untouched,
+    gated by `app.domain.job_errors.is_retryable`).
+-   Added `jobs.idempotency_key` (nullable, UNIQUE) via a real schema
+    migration. **This ALTER-TABLE migration initially failed on
+    SQLite** (constraint changes need Alembic batch mode) — fixed with
+    `batch_alter_table`, verified with a full upgrade/downgrade/
+    upgrade/downgrade round-trip test. First real "ALTER an existing
+    table" migration in the project; all prior ones were CREATE TABLE.
+-   14 new tests: creation + audit, no-active-config/archived-project
+    rejection, idempotency dedup, cancel/pause/resume, retry (all 3
+    outcomes), not-found, cross-user denial.
+-   Verified locally: 148 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (49 source files).
+
+Next: T036 --- Record service (server-side search/filtering/detail
+retrieval).

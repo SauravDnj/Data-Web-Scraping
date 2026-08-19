@@ -2,28 +2,31 @@
 
 ## Active task
 
-T035 --- Job service.
+T036 --- Record service.
 
 ## Previous task
 
-T034 --- Configuration service. COMPLETE — 11 new tests, still no
-live MySQL needed. Resolved a circular task-graph dependency on T040.
-See `docs/18_COMPLETED_WORK.md`.
+T035 --- Job service. COMPLETE — 14 new tests, still no live MySQL
+needed. Added `jobs.idempotency_key` via the project's first
+ALTER-TABLE migration, which needed Alembic batch mode to work on
+SQLite (real bug caught, fixed). See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement job creation and lifecycle commands, using
-`ProjectService.ensure_can_start_job` and
-`app.domain.job_state_machine` (T031) for transitions.
+Implement server-side record search, filtering, and detail retrieval,
+on `app.repositories.records.RecordRepository`.
 
 ## Still open
 
 T027 (index review) remains PARTIAL, genuinely blocked on real MySQL
 for EXPLAIN verification — see `database/INDEX_REVIEW.md`. T012/T013
 still not resolved by the user. The SQLite-substitution pattern has
-now carried through T033 — still holding, but T038/T039 (auth) will
+now carried through T035 — still holding, but T038/T039 (auth) will
 likely be the next place a real hard stop shows up (session/token
-handling benefits strongly from integration tests).
+handling benefits strongly from integration tests). Any future
+migration that ALTERs an existing table (not just CREATE TABLE) must
+use `batch_alter_table` and be verified against SQLite directly —
+don't assume autogenerate's plain output works there.
 
 ## Not yet in scope
 
