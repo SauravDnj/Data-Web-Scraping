@@ -69,7 +69,61 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T012 --- MySQL local setup. (T000, T001, T002, T010, T011 complete.)
+T015 --- Worker skeleton. (T000-T002, T010, T011, T014 complete.
+T012/T013 prepared but NOT verified — see below.)
+
+## T012 (MySQL) / T013 (Redis) — blocked on user action
+
+Not marked complete. MySQL 9.7 is installed and running as a Windows
+service, but this agent does not have (and should not be given) the
+root password — `scripts/mysql_dev_setup.sql` is ready for the user to
+run themselves. Redis has no official Windows build; user ruled out
+WSL (production target is an Ubuntu VPS instead) and is deciding
+between Memurai (native, no WSL) or skipping local Redis entirely.
+Resume: once the user confirms MySQL is set up, run
+`mysql -u app_user -p google_data_platform -e "SELECT 1;"` to verify
+and mark T012 complete; once Redis is reachable (or the user says
+skip), run `python scripts/redis_ping.py` and mark T013 accordingly.
+
+## FastAPI skeleton (T014)
+
+`apps/api/app/main.py` — `create_app()` factory (+ module-level `app`
+for `uvicorn app.main:app`). `GET /health` (process only, always 200),
+`GET /ready` (checks MySQL via direct pymysql connect + `SELECT 1`,
+and Redis via redis-py `PING`, independently — deliberately not using
+the SQLAlchemy engine T020 will add later). Both checks are FastAPI
+dependencies (`check_database`/`check_redis` in
+`app/core/dependencies.py`), overridable via
+`app.dependency_overrides` — this is how tests cover the
+healthy/unhealthy matrix without needing live infra.
+
+`app/core/config.py`: pydantic-settings `Settings`, required
+`app_secret`/`database_url`/`redis_url` (fails clearly if missing),
+optional `google_maps_api_key` (not consumed until the provider tasks).
+`app/core/logging.py`: custom JSON formatter (no new dependency),
+includes `request_id` via a contextvar set by
+`app/core/middleware.py`'s `RequestIdMiddleware` (echoes/generates
+`X-Request-Id`). `app/core/errors.py`: `ApiError` base class + handlers
+producing the `{"error": {...}, "request_id": ...}` envelope for
+`ApiError`, validation errors, and any unhandled exception (logged
+server-side, never leaked to the client).
+
+Added `types-PyMySQL` to the `dev` extra (mypy needs it for
+`pymysql` stubs).
+
+Verified locally: 9/9 tests pass (unit config validation +
+integration health/ready with dependency overrides), ruff
+format/lint clean, mypy clean, and a real manual run
+(`uvicorn app.main:app`) — `/health` → 200, `/ready` → 503 with
+correct per-dependency detail and no credential leakage (MySQL/Redis
+are genuinely not set up yet, so this is the real, expected failure
+path), `X-Request-Id` header present. Server stopped after
+verification.
+
+Known minor issue (not blocking): `starlette.testclient` emits a
+`StarletteDeprecationWarning` suggesting an `httpx2` package — left
+as-is since it's an unfamiliar/very new package and tests pass; revisit
+if it starts failing instead of warning.
 
 ## Next.js environment (T011)
 

@@ -7,9 +7,11 @@
 -   [x] T002 CI baseline
 -   [x] T010 Python environment
 -   [x] T011 Node environment
--   [ ] T012 MySQL
--   [ ] T013 Redis
--   [ ] T014 FastAPI
+-   [ ] T012 MySQL (prepared, blocked on user running the setup script)
+-   [ ] T013 Redis (prepared, blocked on Memurai-vs-skip decision)
+-   [x] T014 FastAPI (done out of order — readiness checks are
+        dependency-injected and fully testable without live
+        MySQL/Redis; see docs/16_MEMORY.md)
 -   [ ] T015 worker skeleton
 
 ## Next

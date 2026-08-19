@@ -2,36 +2,43 @@
 
 ## Active task
 
-T012 --- MySQL local setup.
+T015 --- Worker skeleton.
 
 ## Previous task
 
-T011 --- Next.js environment. COMPLETE. See
-`docs/18_COMPLETED_WORK.md` and `apps/web/`.
+T014 --- FastAPI skeleton. COMPLETE (done ahead of T012/T013 — see
+below). See `docs/18_COMPLETED_WORK.md` and `apps/api/app/main.py`.
 
 ## Goal
 
-Document and verify local MySQL setup: development database,
-application user with least-privilege permissions. Do not use root in
-application configuration.
+Create the worker entry point: configuration loading, Redis
+connection, graceful shutdown, structured logging. Do not execute
+provider work yet.
 
 ## Not yet in scope
 
 -   database schema/migrations (T020/T021);
 -   Google provider calls;
 -   scraping;
--   worker execution;
+-   actual queue consumption logic (T060/T061);
 -   frontend business screens.
 
 ## Handoff
 
-After T012:
+After T015:
 
-T013 → T014 → T015
+T020 (database) onward, or return to T012/T013 once unblocked.
 
-## Known upcoming blocker
+## Open blockers (user action needed)
 
-T012 (MySQL) and T013 (Redis) need real local services. MySQL has a
-native Windows install; Redis does not (no official Windows build) —
-this needs a decision (WSL, Memurai, or another Redis-compatible
-option) before T013, flagged to the user per the earlier agreement.
+-   **T012 (MySQL)**: `scripts/mysql_dev_setup.sql` ready; needs the
+    user to run it with their own MySQL admin access (this agent
+    doesn't have and shouldn't be given the root password).
+-   **T013 (Redis)**: needs a user decision — install Memurai locally
+    (native Windows, no WSL) to verify now, or skip local verification
+    and rely on the Ubuntu VPS deployment target for real Redis
+    testing later. WSL was explicitly ruled out by the user.
+
+T015 (worker skeleton) can still proceed: it only needs the *ability*
+to attempt a Redis connection and shut down gracefully if it's
+unreachable, matching T014's readiness-check pattern.

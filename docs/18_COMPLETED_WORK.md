@@ -163,3 +163,46 @@ Evidence:
     root `.gitignore`).
 
 Next task: T012 --- MySQL local setup.
+
+### T012 --- MySQL local setup: PREPARED, NOT COMPLETE
+
+`scripts/mysql_dev_setup.sql`/`mysql_dev_reset.sql` written and
+documented in `docs/10_LOCAL_SETUP.md`. Blocked on the user running
+the setup script with their own MySQL admin access (this agent does
+not have the root password). Will verify and mark complete once
+confirmed.
+
+### T013 --- Redis local setup: PREPARED, NOT COMPLETE
+
+`scripts/redis_ping.py` written, verified to fail clearly (exit 1,
+clear message) with no Redis running. Blocked on a user decision
+(Memurai vs. skip local Redis) since Redis has no native Windows
+build and WSL is ruled out.
+
+### T014 --- FastAPI skeleton
+
+Status: COMPLETE
+
+Evidence:
+
+-   `apps/api/app/main.py`, `app/core/{config,logging,middleware,
+    errors,dependencies,request_context}.py`, `app/api/health.py`,
+    `app/api/v1/__init__.py` — app factory, structured JSON logging,
+    request ID middleware, CORS scoped to `FRONTEND_ORIGIN`, exception
+    handling foundation, `/health` and `/ready` endpoints, independent
+    MySQL/Redis readiness checks.
+-   9 tests added (`tests/unit/test_config.py`,
+    `tests/integration/test_health.py`, `test_ready.py`) covering
+    settings validation and both the healthy and dependency-failure
+    readiness paths via `app.dependency_overrides` — no live infra
+    required for the automated suite.
+-   Verified locally: full test suite (9/9), `ruff format --check`,
+    `ruff check`, `mypy` all pass. Manually ran the real app
+    (`uvicorn app.main:app`): `/health` → 200, `/ready` → 503 with
+    correct, credential-free per-dependency detail against the actual
+    (currently unset-up) local MySQL/Redis, `X-Request-Id` header
+    present on responses. Server stopped after verification.
+-   No provider calls, no auth business logic, no SQL in route
+    handlers.
+
+Next task: T015 --- Worker skeleton.
