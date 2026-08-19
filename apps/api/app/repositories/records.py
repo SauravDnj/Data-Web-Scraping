@@ -1,4 +1,5 @@
-from typing import Protocol
+from datetime import datetime
+from typing import Any, Protocol
 
 from sqlalchemy import select
 
@@ -22,6 +23,15 @@ class RecordRepository(Protocol):
     def get_by_canonical_key(
         self, project_id: int, canonical_key: str
     ) -> Record | None: ...
+
+    def update_collected_data(
+        self,
+        record_id: int,
+        *,
+        job_id: int,
+        data: dict[str, Any],
+        collected_at: datetime,
+    ) -> Record: ...
 
     def list_for_project(
         self,
@@ -87,6 +97,29 @@ class SqlAlchemyRecordRepository(SqlAlchemyRepository[RecordRow, Record]):
             )
         )
         return self._to_domain(row) if row is not None else None
+
+    def update_collected_data(
+        self,
+        record_id: int,
+        *,
+        job_id: int,
+        data: dict[str, Any],
+        collected_at: datetime,
+    ) -> Record:
+        """T053's "update" outcome — a repeat collection of the same
+        canonical entity refreshes `data`/`collected_at`, and `job_id`
+        moves to whichever job most recently re-collected it (the
+        natural reading of "which job touched this record last",
+        absent a documented alternative). Never touches
+        `canonical_key`/`provider_record_id`/`project_id` — identity
+        doesn't change on an update."""
+        row = self._session.get(RecordRow, record_id)
+        assert row is not None, f"Record {record_id} does not exist."
+        row.job_id = job_id
+        row.data_json = data
+        row.collected_at = collected_at
+        self._session.flush()
+        return self._to_domain(row)
 
     def list_for_project(
         self,
