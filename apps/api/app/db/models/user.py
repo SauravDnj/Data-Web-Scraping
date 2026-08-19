@@ -1,21 +1,12 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, BigIntegerPK
+from app.domain.users import UserStatus
 
-
-class UserStatus:
-    """Plain string values, matching the VARCHAR(32) status columns
-    used throughout the schema (docs/04_DATABASE_DESIGN.md) — not a
-    database-level ENUM."""
-
-    ACTIVE = "active"
-    DISABLED = "disabled"
-    PENDING = "pending"
-
-    ALL = frozenset({ACTIVE, DISABLED, PENDING})
+__all__ = ["User", "UserStatus"]
 
 
 def _utc_now() -> datetime:
@@ -23,9 +14,9 @@ def _utc_now() -> datetime:
 
 
 class User(Base):
-    """Minimum durable identity model for V1. No authentication
-    service logic here (login, tokens, sessions) — that's T038; this
-    only stores identity data, already-hashed."""
+    """Minimum durable identity model for V1. Authentication service
+    logic (login, tokens, sessions) lives in app.services.auth (T038),
+    not here — this only stores identity data and lockout state."""
 
     __tablename__ = "users"
 
@@ -36,6 +27,11 @@ class User(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default=UserStatus.PENDING
     )
+    # T038: basic account-lockout rate/abuse control.
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=_utc_now, onupdate=_utc_now

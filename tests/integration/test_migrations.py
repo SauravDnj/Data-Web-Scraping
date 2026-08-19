@@ -147,7 +147,10 @@ def test_idempotency_key_column_migration_round_trips_on_sqlite(tmp_path):
     (constraint changes need Alembic's batch mode there) — this is a
     permanent regression test for that, not just a table-existence
     check like the CREATE TABLE migrations above. Upgrades all the way
-    to head, downgrades one step, re-upgrades, then all the way back
+    to head, downgrades to the revision immediately before this
+    specific migration (by name, not a relative "-1" offset — later
+    migrations stacked on top of head, as T038 did, would otherwise
+    make "-1" undo the wrong one), re-upgrades, then all the way back
     to base — proving the column and its unique constraint survive a
     full up/down/up/down cycle cleanly."""
     db_path = tmp_path / "idempotency_key_migration.db"
@@ -157,7 +160,7 @@ def test_idempotency_key_column_migration_round_trips_on_sqlite(tmp_path):
     command.upgrade(config, "head")
     assert "idempotency_key" in _column_names(db_path, "jobs")
 
-    command.downgrade(config, "-1")
+    command.downgrade(config, "bafe7b89931a")
     assert "idempotency_key" not in _column_names(db_path, "jobs")
 
     command.upgrade(config, "head")

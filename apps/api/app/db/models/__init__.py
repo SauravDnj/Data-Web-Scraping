@@ -8,6 +8,7 @@ from app.db.models.job import Job, JobRun, JobRunStatus, JobStatus
 from app.db.models.project import Project, ProjectStatus
 from app.db.models.record import Record, RecordProvenance
 from app.db.models.schedule import Schedule
+from app.db.models.session import Session
 from app.db.models.user import User, UserStatus
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "ExportStatus",
     "Schedule",
     "AuditLog",
+    "Session",
 ]
