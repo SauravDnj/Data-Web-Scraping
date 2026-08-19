@@ -10,7 +10,9 @@ full job-management data product, not a scraper script:
 > permitted data.
 
 Full specification, architecture, database/API/UI design, and the task-by-task
-build plan live in [`docs/`](docs/00_MASTER_README.md). Start there.
+build plan live in [`docs/`](docs/00_MASTER_README.md). Start there. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and
+[`docs/CODING_STANDARDS.md`](docs/CODING_STANDARDS.md) before making changes.
 
 ## Repository layout
 

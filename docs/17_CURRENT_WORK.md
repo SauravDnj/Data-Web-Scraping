@@ -2,18 +2,18 @@
 
 ## Active task
 
-T001 --- Coding standards.
+T002 --- CI baseline.
 
 ## Previous task
 
-T000 --- Repository bootstrap. COMPLETE. See
-`docs/18_COMPLETED_WORK.md`.
+T001 --- Coding standards. COMPLETE. See `docs/18_COMPLETED_WORK.md`
+and `docs/CODING_STANDARDS.md`.
 
 ## Goal
 
-Establish consistent coding, naming, testing, logging, and Git
-conventions (backend Python, TypeScript/Next.js, SQL, testing, commit
-conventions) and add tooling configuration where practical.
+Create CI that runs Python lint/format check, Python tests, TypeScript
+type check, and frontend lint/test where configured. Keep CI
+deterministic; do not add deployment.
 
 ## Not yet in scope
 
@@ -22,10 +22,10 @@ conventions) and add tooling configuration where practical.
 -   scraping;
 -   worker execution;
 -   frontend business screens;
--   refactoring application code (none exists yet).
+-   deployment automation.
 
 ## Handoff
 
-After T001:
+After T002:
 
-T002 → T010
+T010 → T011 → T012 → T013 → T014 → T015

@@ -3,7 +3,7 @@
 ## Immediate
 
 -   [x] T000 repository bootstrap
--   [ ] T001 coding standards
+-   [x] T001 coding standards
 -   [ ] T002 CI baseline
 -   [ ] T010 Python environment
 -   [ ] T011 Node environment

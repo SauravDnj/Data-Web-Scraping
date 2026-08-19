@@ -69,7 +69,17 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T001 --- Coding standards. (T000 complete.)
+T002 --- CI baseline. (T000, T001 complete.)
+
+## Coding standards
+
+Established at T001 in `docs/CODING_STANDARDS.md`. Key picks: Black +
+Ruff + mypy for Python; strict TypeScript + ESLint (next/core-web-vitals
++ typescript-eslint); snake_case JSON field names in the API (no
+camelCase alias layer); Conventional Commits; `task/T0NN-slug` branch
+names. Actual tool config files land in T010 (`apps/api`) and T011
+(`apps/web`) respectively so they don't fight those tasks'
+scaffolding.
 
 ## Repository
 

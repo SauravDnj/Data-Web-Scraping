@@ -10,7 +10,7 @@ tests: 0% V1: 0%
   Phase                Status      Completion
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
-  1 Local foundation   IN_PROGRESS         5%
+  1 Local foundation   IN_PROGRESS        15%
   2 Database           PENDING             0%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
@@ -23,13 +23,12 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T001 --- Coding standards.
+T002 --- CI baseline.
 
 ## Last verified milestone
 
-T000 --- Repository bootstrap complete (skeleton, README, .gitignore,
-.env.example, Git initialized with origin
-https://github.com/SauravDnj/Data-Web-Scraping.git).
+T001 --- Coding standards complete (docs/CODING_STANDARDS.md,
+.editorconfig, .gitattributes, CONTRIBUTING.md).
 
 ## Rule
 
