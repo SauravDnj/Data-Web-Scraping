@@ -950,3 +950,50 @@ Evidence:
 Next: T044 --- Provider error mapping (classify `GoogleMapsApiError`
 into T040's `ProviderErrorCategory` taxonomy, reconcile with T035's
 interim job-failure retry set, mark retryability explicitly).
+
+### T044 --- Provider error mapping
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/providers/google_maps/errors.py`: `classify_google_maps_
+    error()` — the real Google implementation of `ProviderAdapter.
+    classify_error()` (T040's Protocol). Maps Google's `error.status`
+    string (`UNAUTHENTICATED`, `INVALID_ARGUMENT`, `RESOURCE_EXHAUSTED`,
+    `UNAVAILABLE`, etc.) into `ProviderErrorCategory`, with an
+    HTTP-status-code fallback when that string is missing.
+-   Extended `ProviderError` (T040's shape) with a mandatory
+    `retryable: bool` (no default — can never be silently omitted) and
+    diagnostic `http_status_code`/`provider_status` fields. New
+    `default_retryable_for_category()` — the taxonomy-level retry
+    default (`RATE`/`TEMPORARY` retryable, everything else not),
+    derived from `docs/09_JOB_QUEUE_WORKER_DEEP.md`'s "do not retry
+    ... provider policy rejection" instruction (quota exhaustion is a
+    policy rejection, not retryable, despite being grouped with rate
+    in docs/07's prose).
+-   **Documented a genuine upstream limitation rather than inventing
+    false precision**: Google's Places API (New) exposes no status
+    distinct from `RESOURCE_EXHAUSTED` for rate-limiting vs. quota
+    exhaustion — this adapter maps that status to `QUOTA` only;
+    `ProviderErrorCategory.RATE` exists for providers that do
+    distinguish the two and is simply never produced here.
+-   **Reconciled `app.domain.job_errors` with the real taxonomy** —
+    `Job.error_code` now holds a `ProviderErrorCategory` value or the
+    separate, always-retryable `"persistence"` code (transient
+    database failures, which the provider taxonomy was never meant to
+    cover). Replaces T035's provisional
+    `"transient_network"`/`"rate_limit"` codes; updated the one
+    existing test that asserted on the old value.
+-   22 new tests (`tests/unit/test_google_maps_errors.py`): every
+    documented Google status → category mapping, the HTTP-fallback
+    path, unrecognized-status handling, retryability per category,
+    diagnostic-context preservation, and the literal acceptance
+    criterion (two identical classified errors yield the same retry
+    decision).
+-   Verified locally: 265 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (72 source files).
+
+Next: T045 --- Provider contract tests (assemble the complete
+fake-provider contract suite proving the whole Google adapter is
+testable without live credentials).

@@ -69,10 +69,10 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T044 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
-complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T043
+T045 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T044
 complete. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for T030-T043 detail; this header is not
+dated sections further down for T030-T044 detail; this header is not
 updated inline each time, check docs/17_CURRENT_WORK.md for the
 authoritative up-to-the-minute status.)
 
@@ -846,6 +846,71 @@ result`) and the malformed-response test above.
 
 Verified locally: 243 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (71 source files).
+
+## Provider error mapping (T044) — current task now T045
+
+`app/providers/google_maps/errors.py`: `classify_google_maps_error()`
+— the real Google implementation of `ProviderAdapter.classify_error()`
+(T040's Protocol), mapping `GoogleMapsApiError` (T042) into T040's
+`ProviderErrorCategory` taxonomy using Google's own `error.status`
+string (`google.rpc.Code`-style: `UNAUTHENTICATED`,
+`INVALID_ARGUMENT`, `RESOURCE_EXHAUSTED`, `UNAVAILABLE`, ...) with an
+HTTP-status-code fallback when that string is missing/unparseable.
+
+**Extended `ProviderError` itself (T040's shape), because T044's own
+IMPLEMENT list needs fields it didn't have**: added `retryable: bool`
+(mandatory, no default — item 8, "mark retryability explicitly," can
+never be silently skipped) and `http_status_code`/`provider_status`
+(item 7, "preserve safe diagnostic context" — generic field names, any
+HTTP-based provider has both). `default_retryable_for_category()`
+(new, `app.domain.provider_contracts`) is the taxonomy-level default
+retry policy — `{RATE, TEMPORARY}` retryable, everything else not —
+derived directly from `docs/09_JOB_QUEUE_WORKER_DEEP.md`'s "Do not
+retry: invalid configuration; invalid credentials; forbidden
+operation; provider policy rejection" (quota exhaustion **is** a
+provider policy rejection, not retryable, despite docs/07 mentioning
+it alongside rate in the same "stop/backoff" sentence — rate limiting
+is the industry-standard retry-after-backoff case, quota is a harder
+cap that needs a human, not a retry).
+
+**A genuine upstream limitation, documented rather than worked
+around**: Google's Places API (New) does not expose a status distinct
+from `RESOURCE_EXHAUSTED` for "sending too fast" versus "quota
+allotment used up" — both look identical. This adapter maps
+`RESOURCE_EXHAUSTED`/429 to `QUOTA` only; `ProviderErrorCategory.RATE`
+exists for providers that DO distinguish the two, and this Google
+adapter simply never produces it. `TimeoutError`/network-transport
+failures (`GoogleMapsApiError.status_code is None`, meaning
+`GoogleMapsClient` already exhausted its own `max_retries`) classify
+as `TEMPORARY`.
+
+**Reconciled `app.domain.job_errors` with the new taxonomy (the
+"T044 must reconcile" note from T035/T040's memory entries) —
+`Job.error_code` now holds either one of `ProviderErrorCategory`'s own
+string values, or `"persistence"`**, a separate, always-retryable,
+explicitly non-provider code for a transient database failure during a
+write (`ProviderErrorCategory` was never meant to cover that). This
+replaces T035's original provisional set
+(`"transient_network"`/`"rate_limit"`/`"persistence"`) — the first two
+are superseded now that the real taxonomy's own string values exist.
+**Updated `tests/unit/test_job_service.py`'s
+`test_retry_creates_a_new_job_when_error_is_retryable`**, which used to
+assert on the now-removed `"transient_network"` — changed to
+`"temporary"`, the reconciled equivalent; nothing else needed to
+change since `"authentication"` (used by the sibling non-retryable
+test) was already a valid `ProviderErrorCategory` value by
+coincidence.
+
+22 new tests: `tests/unit/test_google_maps_errors.py` (every documented
+Google status → category mapping, the HTTP-status fallback path, an
+unrecognized 4xx → `PERMANENT`/not-retryable, an unrecognized
+non-4xx/5xx status → `UNKNOWN`/not-retryable, retryability for
+auth/quota vs. temporary, diagnostic context preservation, and the
+literal T044 acceptance criterion — two identical classified errors
+yield the same retry decision).
+
+Verified locally: 265 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (72 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

@@ -124,8 +124,9 @@ class JobService:
         """FAILED is terminal for a Job row (T031) — a retry creates a
         NEW job referencing the same project/config rather than
         resurrecting the old one, and only when the original failure's
-        error class is retryable (app.domain.job_errors, interim
-        until T044)."""
+        error class is retryable (app.domain.job_errors, reconciled
+        with app.domain.provider_contracts.ProviderErrorCategory at
+        T044)."""
         original = self._require_owned_job(job_id, requesting_user_id)
         if original.status != JobStatus.FAILED:
             raise InvalidStateError(

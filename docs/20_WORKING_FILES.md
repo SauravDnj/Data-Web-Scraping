@@ -7,14 +7,26 @@ being changed.
 
 ## Active task
 
-T044 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T043
+T045 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T044
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T044 has not started.
+None yet — T045 has not started.
+```
+
+## T044 files (complete — for reference)
+
+``` text
+apps/api/app/providers/google_maps/errors.py    (new)
+apps/api/app/domain/provider_contracts.py       (modified — ProviderError extended, default_retryable_for_category added)
+apps/api/app/domain/job_errors.py               (modified — reconciled with ProviderErrorCategory)
+apps/api/app/services/jobs.py                   (modified — docstring only)
+tests/unit/fakes.py                             (modified — FakeProviderAdapter.classify_error updated)
+tests/unit/test_job_service.py                  (modified — "transient_network" -> "temporary")
+tests/unit/test_google_maps_errors.py           (new)
 ```
 
 ## T043 files (complete — for reference)

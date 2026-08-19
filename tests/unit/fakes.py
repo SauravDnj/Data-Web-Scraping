@@ -10,6 +10,7 @@ from app.domain.provider_contracts import (
     ProviderHealth,
     RawProviderItem,
     UsageEstimate,
+    default_retryable_for_category,
 )
 from app.domain.provider_validation import ConfigValidationResult
 
@@ -78,9 +79,14 @@ class FakeProviderAdapter:
         )
 
     def classify_error(self, error: Exception) -> ProviderError:
-        if isinstance(error, TimeoutError):
-            return ProviderError(ProviderErrorCategory.TEMPORARY, str(error))
-        return ProviderError(ProviderErrorCategory.UNKNOWN, str(error))
+        category = (
+            ProviderErrorCategory.TEMPORARY
+            if isinstance(error, TimeoutError)
+            else ProviderErrorCategory.UNKNOWN
+        )
+        return ProviderError(
+            category, str(error), retryable=default_retryable_for_category(category)
+        )
 
     def health_check(self) -> ProviderHealth:
         return ProviderHealth(healthy=True)

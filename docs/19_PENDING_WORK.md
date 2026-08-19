@@ -78,7 +78,11 @@
         `ProviderAdapter.normalize()`; new `RecordDraft` domain type;
         malformed fields treated as missing, never crash — see
         docs/16_MEMORY.md)
--   [ ] T044--T045 provider (Google-specific)
+-   [x] T044 Provider error mapping (`classify_google_maps_error()` —
+        real `ProviderAdapter.classify_error()`; extended
+        `ProviderError` with retryable/diagnostic fields; reconciled
+        `job_errors` with the real taxonomy — see docs/16_MEMORY.md)
+-   [ ] T045 Provider contract tests
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend

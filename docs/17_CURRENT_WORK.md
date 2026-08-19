@@ -2,46 +2,42 @@
 
 ## Active task
 
-T044 --- Provider error mapping.
+T045 --- Provider contract tests.
 
 ## Previous task
 
-T043 --- Google response mapper. COMPLETE —
-`app/providers/google_maps/mapper.py`: `normalize_place()` (the real
-`ProviderAdapter.normalize()` implementation) and
-`map_place_to_record_draft()` (attaches job/project context + a
-collection timestamp). New `app.domain.records.RecordDraft` (a
-`Record` minus `canonical_key`/`id`/timestamps — Stage 5 canonical-key
-computation is T052's job, not T043's). Malformed fields are treated
-exactly like missing ones — never coerced, never crash. 10 new
-fixture-based tests
-(`tests/fixtures/google_maps/{full,minimal,malformed}_place.json`).
-T042 --- Google client, T041 --- Google configuration, T040 ---
+T044 --- Provider error mapping. COMPLETE —
+`app/providers/google_maps/errors.py`: `classify_google_maps_error()`
+(the real `ProviderAdapter.classify_error()` implementation), mapping
+Google's `error.status` (+ HTTP status fallback) into T040's
+`ProviderErrorCategory`. Extended `ProviderError` itself with
+mandatory `retryable` + diagnostic `http_status_code`/
+`provider_status` fields; added `default_retryable_for_category()`.
+Reconciled `app.domain.job_errors` with the new taxonomy (`Job.
+error_code` now holds a `ProviderErrorCategory` value or
+`"persistence"`), replacing T035's provisional
+`"transient_network"`/`"rate_limit"` codes — updated the one existing
+test that used the old value. 22 new tests. T043 --- Google response
+mapper, T042 --- Google client, T041 --- Google configuration, T040 ---
 Provider interface, T039 --- Authorization, T038 --- Authentication
 all complete before it. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Turn Google-specific failures (from `GoogleMapsApiError`, T042 — HTTP
-status + Google's own `error.status` string) into the stable
-`app.domain.provider_contracts.ProviderErrorCategory` taxonomy T040
-already defined (read `docs/T044_PROMPT.md` before assuming scope) —
-map authentication/invalid-request/quota/rate/transient/permanent
-errors, preserve safe diagnostic context (never leak the API key or
-raw response body verbatim into a log line), mark retryability
-explicitly. This is also where the acknowledged tension between this
-new taxonomy and `app.domain.job_errors.RETRYABLE_ERROR_CLASSES`
-(T035's interim job-failure retry set — see that file's docstring)
-must finally be reconciled, not left diverging any longer. Must NOT
-auto-retry policy/authorization failures or hide a provider error as a
-generic internal one (T044's explicit DO NOT list). Acceptance: "the
-worker can make a deterministic retry/no-retry decision from the
-classified error" — this is likely where `ProviderAdapter.
-classify_error()` (T040's Protocol) gets its real Google
-implementation, completing every method except `estimate()`/
-`health_check()` (still open — no task currently claims them
-explicitly; check whether T045 needs them before assuming they're
-truly unclaimed).
+Assemble a complete, fake-based `ProviderAdapter` contract test suite
+(read `docs/T045_PROMPT.md` before assuming scope) — synthetic
+fixtures, valid/empty/malformed collection responses, pagination,
+quota/authentication/transient-error scenarios, normalization,
+provenance, deterministic mapping — proving the whole Google adapter
+(config validation T041 + HTTP client T042 + response mapper T043 +
+error classifier T044, composed together) is testable end-to-end
+without any live Google credentials. This is very likely where a
+single `GoogleMapsProvider` class finally gets assembled satisfying
+every method of T040's `ProviderAdapter` Protocol (`validate_config`,
+`collect`, `normalize`, `classify_error` all already have real
+implementations spread across T041-T044; `estimate()`/`health_check()`
+still have no real implementation anywhere — check whether T045 is
+where those get written, or whether they remain open after it).
 
 ## Not yet in scope
 

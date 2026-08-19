@@ -179,7 +179,7 @@ def test_retry_creates_a_new_job_when_error_is_retryable(session_factory):
         projects, configs, jobs = _make_services(session)
         project = _make_project_with_active_config(projects, configs, user.id)
         original = jobs.create_job(project.id, requesting_user_id=user.id)
-        _fail_job(session, original.id, "transient_network")
+        _fail_job(session, original.id, "temporary")
 
         retried = jobs.retry_job(original.id, requesting_user_id=user.id)
 
