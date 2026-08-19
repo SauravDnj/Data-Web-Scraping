@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.security import hash_password, normalize_email
 from app.db.models import CollectionConfig, Job, JobRun, JobStatus, Project, User
 from app.db.session import build_session_factory, session_scope
+from app.domain.job_state_machine import transition
 
 
 def _make_user_project_configs(session):
@@ -108,7 +109,9 @@ def test_job_lifecycle_timestamps(sqlite_engine):
 
     with session_scope(factory) as session:
         job = session.query(Job).filter_by(id=job_id).one()
-        job.status = JobStatus.RUNNING
+        # DRAFT -> RUNNING directly is illegal (T031) — must queue first.
+        job.status = transition(JobStatus(job.status), JobStatus.QUEUED)
+        job.status = transition(JobStatus(job.status), JobStatus.RUNNING)
         job.started_at = datetime.now(UTC)
 
     with session_scope(factory) as session:
@@ -116,7 +119,7 @@ def test_job_lifecycle_timestamps(sqlite_engine):
         assert job.started_at is not None
         assert job.finished_at is None
 
-        job.status = JobStatus.COMPLETED
+        job.status = transition(JobStatus(job.status), JobStatus.COMPLETED)
         job.finished_at = datetime.now(UTC)
 
     with session_scope(factory) as session:

@@ -2,28 +2,29 @@
 
 ## Active task
 
-T031 --- Job state machine.
+T033 --- Project service.
 
 ## Previous task
 
-T030 --- Domain models. COMPLETE — pure Python, 17 new tests, no DB
-touched. Centralized status enums into `app/domain/`, ORM files now
-import rather than redefine them. See `docs/18_COMPLETED_WORK.md`.
+T032 --- Repository layer. COMPLETE — 7 repositories, 16 new tests,
+still no live MySQL needed (found/fixed a real domain/schema
+mismatch along the way: 3 domain fields had misleading optional
+defaults for NOT-NULL columns). See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement explicit legal job state transitions using
-`app.domain.jobs.JobStatus`. Should be pure-Python testable, same as
-T030 — a state machine is business logic, not persistence.
+Implement project business rules and authorization boundaries, built
+on `app.repositories.projects.ProjectRepository`.
 
 ## Still open
 
 T027 (index review) remains PARTIAL, genuinely blocked on real MySQL
 for EXPLAIN verification — see `database/INDEX_REVIEW.md`. T012/T013
-still not resolved by the user. Continuing into T031+ where honestly
-possible without live infra, per the user's "continue" instruction,
-but T032 (repository layer) and beyond will need real MySQL to
-properly integration-test rather than just unit-test.
+still not resolved by the user. The SQLite-substitution pattern has
+now carried all the way through the repository layer (T032) — T033+
+introduces authorization/business-rule logic that's still plausibly
+pure-Python-testable, but real integration testing against MySQL
+would give stronger confidence than unit tests alone from here on.
 
 ## Not yet in scope
 
@@ -34,8 +35,9 @@ properly integration-test rather than just unit-test.
 
 ## Handoff
 
-After T031: T032 (repository layer — likely wants real MySQL for
-integration tests, unit tests alone may not fully satisfy it) → T033+.
+After T033: T034 (configuration service) → T035 (job service) → ...
+T038/T039 (auth) will likely be the next place a real hard stop shows
+up (session/token handling benefits strongly from integration tests).
 
 ## Open blockers (user action needed)
 

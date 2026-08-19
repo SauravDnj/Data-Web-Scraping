@@ -12,7 +12,7 @@ tests: 0% V1: 0%
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
-  3 Backend            IN_PROGRESS        10%
+  3 Backend            IN_PROGRESS        30%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
@@ -23,13 +23,14 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T031 --- Job state machine. (T027 PARTIAL, T012/T013 still open.)
+T033 --- Project service. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T030 --- Domain models complete and verified (69 passed, 1 skipped as
-expected), fully pure-Python — no database touched. Status enums
-genuinely centralized in app/domain/, not just duplicated.
+T032 --- Repository layer complete and verified (114 passed, 1
+skipped as expected), still no live MySQL needed. Found/fixed a real
+domain/schema mismatch (3 fields with misleading optional defaults)
+along the way.
 
 ## Rule
 

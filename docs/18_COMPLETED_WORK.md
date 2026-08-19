@@ -478,3 +478,65 @@ Evidence:
 
 Next: T031 --- Job state machine (also pure-Python-testable in
 principle, per its own dependencies: T030, T024).
+
+### T031 --- Job state machine
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/job_state_machine.py`: explicit transition table
+    (single source of truth), 4 terminal states, `transition()` /
+    `is_legal_transition()`, typed `InvalidJobTransition` error.
+-   Retrofitted the one existing place that assigned `Job.status`
+    directly (`tests/unit/test_job_models.py`, from T024) to go
+    through `transition()` — satisfies "database/service code uses
+    this state machine rather than arbitrary status assignment" given
+    no repository/service layer exists yet to refactor.
+-   20 new tests: full legal-transition matrix, representative illegal
+    transitions, the two acceptance criteria verbatim
+    (completed→running, failed→completed), pause/resume symmetry,
+    terminal-status exhaustiveness, full 8×8 completeness sweep,
+    no-self-transition.
+-   Verified locally: 100 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (32 source files).
+
+Next: T032 --- Repository layer (likely wants real MySQL for proper
+integration tests, not just the SQLite-substitution unit tests used
+so far).
+
+### T032 --- Repository layer
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/repositories/base.py` (shared `SqlAlchemyRepository`/`Page`),
+    plus exactly 7 concrete repositories (project, config, job,
+    record, export, schedule, audit) each with a `Protocol` +
+    SQLAlchemy implementation — matching T032's literal entity list
+    (`JobRun`/`RecordProvenance` folded into `Job`/`Record` repos).
+-   `JobRepository.update_status()` goes through
+    `app.domain.job_state_machine.transition()`, not a direct
+    assignment — verified by a test that a jump to an illegal target
+    raises `InvalidJobTransition`.
+-   Added `app/domain/audit.py` (`AuditLogEntry`) — a small, justified
+    addition since T032 needs a domain type for audit entries that
+    T030 didn't create.
+-   **Found and fixed a real domain/schema mismatch**: `Record.
+    collected_at`, `RecordProvenance.collected_at`, `Schedule.
+    next_run_at` had misleading optional defaults despite being
+    NOT NULL columns the repositories forward as-is — fixed by making
+    them required, which now fails fast with a clear `TypeError`
+    instead of a confusing SQL error.
+-   Refactored shared test setup into `tests/unit/conftest.py`
+    (`session_factory` fixture) and `tests/unit/factories.py`.
+-   16 new tests, all working through domain objects only (no
+    SQLAlchemy row type in any assertion) — satisfies the literal
+    acceptance criterion.
+-   Verified locally: 114 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (42 source files).
+
+Next: T033 --- Project service (business rules + authorization
+boundaries — likely the point where real MySQL integration testing
+starts mattering more than the SQLite-substitution approach).

@@ -38,7 +38,11 @@
         MySQL not done — genuinely blocked on T012.
 -   [x] T030 Domain models (pure Python, centralized status enums —
         see docs/16_MEMORY.md)
--   [ ] T031--T039 backend
+-   [x] T031 Job state machine (pure Python, 20 tests covering full
+        transition matrix)
+-   [x] T032 Repository layer (7 repos, found/fixed a real domain/
+        schema mismatch — see docs/16_MEMORY.md)
+-   [ ] T033--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

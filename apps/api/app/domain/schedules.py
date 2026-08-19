@@ -8,10 +8,14 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class Schedule:
+    """`next_run_at` is required, not optional — the schema has it
+    NOT NULL (docs/04_DATABASE_DESIGN.md) with no server-side default,
+    and the repository forwards it as-is at creation time."""
+
     id: int | None
     project_id: int
     cron_expression: str
+    next_run_at: datetime
     timezone: str = "UTC"
     enabled: bool = True
-    next_run_at: datetime | None = None
     last_run_at: datetime | None = None

@@ -51,3 +51,6 @@ exports/*
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code session state (local to the machine running it)
+.claude/

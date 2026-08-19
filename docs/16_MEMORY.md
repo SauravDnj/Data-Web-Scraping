@@ -125,6 +125,91 @@ status-enum-identity proof.
 Verified locally: 69 passed, 1 skipped (T012-gated), ruff clean across
 all three Python trees, mypy clean (31 source files now, up from 25).
 
+## Job state machine (T031)
+
+`app/domain/job_state_machine.py`: `_ALLOWED_TRANSITIONS` dict is the
+single source of truth. Terminal states (no legal outgoing
+transition): `COMPLETED`, `PARTIALLY_COMPLETED`, `FAILED`,
+`CANCELLED` — a job that needs to run again is a NEW `Job` row, not a
+resurrection of the old one. `DRAFT -> RUNNING` directly is illegal
+(must go through `QUEUED`); only `RUNNING` can go to `PAUSED`, and
+`PAUSED` can only return to `RUNNING` or go to `CANCELLED` (not
+directly to any outcome state — must resume first).
+
+`transition(current, target) -> target` raises `InvalidJobTransition`
+(typed domain error, carries `.current`/`.target`) on an illegal
+transition; returns the target unchanged on success. Deliberately
+stateless/pure — doesn't mutate a `Job`, callers persist the result.
+**Retrofitted the one place that already assigned `Job.status`
+directly** (`tests/unit/test_job_models.py`'s lifecycle test, from
+T024) to go through `transition()` instead — this is what "database/
+service code uses this state machine rather than arbitrary status
+assignment" means in practice until T032/T035 exist.
+
+20 new tests: every one of the 11 legal transitions (parametrized),
+12 representative illegal ones (parametrized), the two acceptance
+criteria phrased literally (completed→running, failed→completed),
+pause/resume symmetry, terminal-status exhaustiveness, a
+no-status-left-undefined completeness sweep (all 8×8 pairs), and
+no-self-transition.
+
+Verified locally: 100 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (32 source files).
+
+## Repository layer (T032)
+
+`app/repositories/base.py`: `SqlAlchemyRepository[OrmT, DomainT]`
+(PEP 695 generic syntax — ruff's `UP046` flagged the old
+`Generic[...]` subclass form given `target-version = "py312"`) with
+shared `get()`/`_paginate()`; `Page[DomainT]` dataclass (items, total,
+limit, offset). Repositories never call `session.commit()` — the
+caller's `session_scope()` (T020) owns the transaction, which is what
+"transaction-aware" means in practice here.
+
+Exactly 7 concrete repositories, matching T032's literal list —
+`JobRun` operations folded into `JobRepository` (`create_run`,
+`list_runs_for_job`) and `RecordProvenance` into `RecordRepository`
+(`add_provenance`), since T032 only names 7 entities for 9 tables.
+Each has a `typing.Protocol` (what services depend on) + a
+`SqlAlchemy*` concrete class. `JobRepository.update_status()` is the
+one place that goes through `app.domain.job_state_machine.transition()`
+rather than assigning `.status` directly — enforcing structural
+validity is a repository-layer job; deciding *when* to transition
+stays in the service layer (T035, doesn't exist yet).
+
+**Added `app/domain/audit.py` (`AuditLogEntry`) — not in T030's
+literal entity list**, but the audit repository needs a domain type to
+return like every other one does; this is a small, justified addition
+at T032, not scope creep into T030's already-closed task.
+
+**Found and fixed a real domain/schema mismatch while writing repo
+tests**: `Record.collected_at`, `RecordProvenance.collected_at`, and
+`Schedule.next_run_at` all had misleading `datetime | None = None`
+defaults in the T030 domain dataclasses, but their DB columns are
+`NOT NULL` with no server-side default, AND the repositories forward
+them as-is at creation time (unlike DB-generated timestamps like
+`created_at`, which repositories never forward). Fixed by making all
+three required fields (no default) — this surfaces the mistake at
+domain-object construction with a clear `TypeError`, not a confusing
+`NOT NULL constraint failed` SQL error three layers down. Updated the
+T030 tests that constructed these without the now-required field.
+
+Added a `session_factory` fixture to `tests/unit/conftest.py`
+(wrapping `build_session_factory(sqlite_engine)`) and
+`tests/unit/factories.py` (plain ORM-row-creation helper functions —
+`make_user`/`make_project`/`make_config`/`make_job`) to avoid a 4th/5th
+copy-paste of the same setup boilerplate that T023-T026's test files
+had each been repeating. Existing test files weren't retrofitted
+(out of scope) — only new T032 tests use the shared helpers.
+
+16 new tests across all 7 repositories, working entirely through
+domain objects (no SQLAlchemy row type ever appears in an assertion),
+including one that proves `update_status` really enforces the state
+machine (not just writes whatever status it's given).
+
+Verified locally: 114 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (42 source files).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows

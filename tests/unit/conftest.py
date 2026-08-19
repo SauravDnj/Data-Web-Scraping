@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.session import build_engine
+from app.db.session import build_engine, build_session_factory
 
 
 @pytest.fixture
@@ -22,3 +22,8 @@ def sqlite_engine() -> Iterator[object]:
     yield engine
     Base.metadata.drop_all(engine)
     engine.dispose()
+
+
+@pytest.fixture
+def session_factory(sqlite_engine: object) -> object:
+    return build_session_factory(sqlite_engine)

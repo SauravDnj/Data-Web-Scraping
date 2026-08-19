@@ -2,6 +2,8 @@
 database — no fixtures here touch SQLite or SQLAlchemy at all, proving
 domain logic really is DB-independent."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.db.models import (
@@ -99,6 +101,7 @@ def test_record_rejects_empty_canonical_key():
             provider="google_maps",
             canonical_key="  ",
             data={},
+            collected_at=datetime.now(UTC),
         )
 
 
@@ -110,13 +113,17 @@ def test_record_holds_arbitrary_provider_data():
         provider="google_maps",
         canonical_key="google_maps:places/abc123",
         data={"name": "Example Cafe", "rating": 4.5},
+        collected_at=datetime.now(UTC),
     )
     assert record.data["rating"] == 4.5
 
 
 def test_record_provenance_defaults_metadata_to_empty_dict():
     provenance = RecordProvenance(
-        id=None, record_id=1, provider_operation="places.details"
+        id=None,
+        record_id=1,
+        provider_operation="places.details",
+        collected_at=datetime.now(UTC),
     )
     assert provenance.metadata == {}
 
@@ -128,7 +135,12 @@ def test_export_defaults_to_pending_status_and_no_job_reference():
 
 
 def test_schedule_defaults_to_enabled_and_utc():
-    schedule = Schedule(id=None, project_id=1, cron_expression="0 * * * *")
+    schedule = Schedule(
+        id=None,
+        project_id=1,
+        cron_expression="0 * * * *",
+        next_run_at=datetime.now(UTC),
+    )
     assert schedule.enabled is True
     assert schedule.timezone == "UTC"
 
