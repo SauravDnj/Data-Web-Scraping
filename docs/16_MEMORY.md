@@ -69,13 +69,13 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T051 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T052 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045 and
-T050 complete — Phase 4 Provider fully done, Phase 5 Data pipeline
-started. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for detail; this header is not updated
-inline each time, check docs/17_CURRENT_WORK.md for the authoritative
-up-to-the-minute status.)
+T050-T051 complete — Phase 4 Provider fully done, Phase 5 Data
+pipeline in progress. T012/T013 prepared but NOT verified — see below.
+See the dated sections further down for detail; this header is not
+updated inline each time, check docs/17_CURRENT_WORK.md for the
+authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1060,6 +1060,60 @@ in one realistic mixed record, and a literal determinism test (item
 
 Verified locally: 305 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (75 source files).
+
+## Validation pipeline (T051) — current task now T052
+
+`app/pipeline/validate.py`: `RecordQuality` (StrEnum:
+VALID/WARNING/REJECTED), `FieldRule`, `FieldValidationError`,
+`ValidationResult`, `validate_record_draft()` — Stage 2 ("Schema
+validation") + Stage 4 ("Quality") of
+`docs/08_DATA_PIPELINE_DEEP.md`, combined into one pass since a field
+either passes or fails with a severity, and the record's overall
+verdict is just the worst severity among its fields. Same
+"caller-declares-the-rules" principle as T050's `FieldKind` — nothing
+guessed from a field's name or value shape.
+
+**Key design decision, directly matching docs/08's own two worked
+examples**: "missing" is not the same knob as "present but invalid."
+`FieldRule.missing_severity` (`None` = fine if absent) is what a
+field's *absence* becomes; `FieldRule.severity` (for a type/range/
+URL-syntax failure) is what a *present-but-wrong* value becomes. This
+is exactly what lets `website` be a WARNING when missing but
+REJECTED-severity type-checked when present, and lets `name` be
+REJECTED when missing — a single `required: bool` flag couldn't
+express both of docs/08's examples ("missing website → warning",
+"invalid coordinate → rejected") with one field-rule shape.
+
+Coordinate range validation (item 5) needed no dedicated mechanism —
+it's just `min_value`/`max_value` applied to a coordinate-shaped
+field, the same generic range check any other numeric field uses.
+URL syntax validation (item 6) is syntax-only (`urllib.parse.urlsplit`,
+checking scheme ∈ {http, https} + non-empty host) — never a real
+request, which is what makes "does not make network calls" (T051's
+literal acceptance criterion) trivially true. `_isinstance_strict()`
+guards against `bool` silently passing a numeric type check (`bool`
+is a subclass of `int` in Python).
+
+**Wired into `app/providers/google_maps/mapper.py` immediately**:
+`GOOGLE_FIELD_RULES` (name required/REJECTED-if-missing,
+latitude/longitude range-checked, rating range-checked as WARNING,
+website WARNING-if-missing + URL-syntax-checked) +
+`validate_google_place_record()` — kept as an explicit, separately
+callable step from `map_place_to_record_draft()`, not silently
+chained into it, matching the composable-stages pattern established
+since T041/T042 (config validation and the HTTP client stayed
+separate calls, never merged).
+
+28 new tests: `tests/unit/test_pipeline_validate.py` (one section per
+T051 IMPLEMENT item, including the exact valid/warning/rejected
+scenarios from docs/08's own examples) +
+`tests/unit/test_google_maps_mapper.py` (3 new tests proving
+`validate_google_place_record()` produces the right verdict through
+the real Google field rules, not just `app.pipeline.validate` in
+isolation).
+
+Verified locally: 333 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (76 source files).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

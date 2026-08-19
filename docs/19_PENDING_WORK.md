@@ -90,7 +90,11 @@
         provider-agnostic Stage 3 transformations, caller-declared
         field kinds, NFC-only Unicode; wired into the Google mapper —
         see docs/16_MEMORY.md)
--   [ ] T051--T055 pipeline
+-   [x] T051 Validation pipeline (`app/pipeline/validate.py` — Stage
+        2+4 combined, `missing_severity` vs. `severity` as separate
+        knobs matching docs/08's own examples; wired into the Google
+        mapper — see docs/16_MEMORY.md)
+-   [ ] T052--T055 pipeline
 -   [ ] T060--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations

@@ -10,10 +10,12 @@ from pathlib import Path
 
 from app.domain.provider_contracts import NormalizedItem
 from app.domain.records import RecordDraft
+from app.pipeline.validate import RecordQuality
 from app.providers.google_maps.mapper import (
     GOOGLE_MAPS_TEXT_SEARCH_OPERATION,
     map_place_to_record_draft,
     normalize_place,
+    validate_google_place_record,
 )
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "google_maps"
@@ -134,6 +136,53 @@ def test_map_place_to_record_draft_attaches_job_project_and_timestamp():
         collected_at=collected_at,
         provider_record_id="ChIJrTLr-GyuEmsRBfy61i59si0",
     )
+
+
+def test_validate_google_place_record_accepts_a_fully_populated_record():
+    raw_item = _load_fixture("full_place.json")
+    draft = map_place_to_record_draft(
+        raw_item,
+        project_id=7,
+        job_id=99,
+        collected_at=datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC),
+    )
+
+    result = validate_google_place_record(draft)
+
+    assert result.quality == RecordQuality.VALID
+    assert result.errors == []
+
+
+def test_validate_google_place_record_warns_on_a_missing_website():
+    """docs/08's literal example, exercised through the real Google
+    field rules T051 wired in, not just app.pipeline.validate in
+    isolation."""
+    raw_item = _load_fixture("minimal_place.json")
+    draft = map_place_to_record_draft(
+        raw_item,
+        project_id=7,
+        job_id=99,
+        collected_at=datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC),
+    )
+
+    result = validate_google_place_record(draft)
+
+    assert result.quality == RecordQuality.WARNING
+    assert result.errors[0].field == "website"
+
+
+def test_validate_google_place_record_rejects_a_record_with_no_name():
+    raw_item = {"id": "place-1", "location": {"latitude": 21.17, "longitude": 72.83}}
+    draft = map_place_to_record_draft(
+        raw_item,
+        project_id=7,
+        job_id=99,
+        collected_at=datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC),
+    )
+
+    result = validate_google_place_record(draft)
+
+    assert result.quality == RecordQuality.REJECTED
 
 
 def test_record_draft_from_a_place_with_no_id_has_no_provider_record_id():

@@ -16,10 +16,14 @@ map for it.
 malformed response (T043 item 10 explicitly asks for a test proving
 this doesn't crash) — is treated exactly like a missing field: it is
 silently omitted from the normalized `data`, never coerced or guessed
-at.** True schema *validation* (flagging a whole response as
-`warning`/`rejected` for a suspicious value) is Stage 4 ("Quality") of
-`docs/08_DATA_PIPELINE_DEEP.md` — a separate, later task (T051); this
-module's job is only "never invent a field, never raise on bad input."
+at.** True schema/quality *validation* (flagging a record `warning`/
+`rejected` for a suspicious value) is Stages 2/4 of
+`docs/08_DATA_PIPELINE_DEEP.md` — `GOOGLE_FIELD_RULES`/
+`validate_google_place_record()` below (T051) — kept as an explicit,
+separately-callable step, not silently chained into
+`map_place_to_record_draft()`, matching the composable-pipeline-stages
+pattern established since T041/T042 (config validation and HTTP
+client stayed separate calls too, never merged into one).
 
 **Provider/source reference (T043 item 3)**: Places API (New) has no
 separate "reference" field distinct from the place `id` itself (the
@@ -35,6 +39,12 @@ from typing import Any
 from app.domain.provider_contracts import NormalizedItem, RawProviderItem
 from app.domain.records import RecordDraft
 from app.pipeline.normalize import FieldKind, normalize_record_data
+from app.pipeline.validate import (
+    FieldRule,
+    RecordQuality,
+    ValidationResult,
+    validate_record_draft,
+)
 
 GOOGLE_MAPS_TEXT_SEARCH_OPERATION = "google_maps.places.text_search"
 
@@ -59,6 +69,32 @@ FIELD_KINDS: dict[str, FieldKind] = {
     "user_rating_count": FieldKind.NUMBER,
     "latitude": FieldKind.NUMBER,
     "longitude": FieldKind.NUMBER,
+}
+
+# Stage 2/4 validation (T051) field rules for this mapper's own output
+# keys. Directly matches docs/08's own two worked examples: a missing
+# `website` is a WARNING (`missing_severity`), an out-of-range
+# `latitude`/`longitude` is REJECTED (the default `severity`). `name`
+# missing entirely is REJECTED — a record with no name is not usable.
+# `rating` out of Google's documented 0.0-5.0 range is a WARNING, not
+# a hard rejection — a slightly-off rating is still a usable record.
+GOOGLE_FIELD_RULES: dict[str, FieldRule] = {
+    "name": FieldRule(missing_severity=RecordQuality.REJECTED, expected_types=(str,)),
+    "latitude": FieldRule(expected_types=(int, float), min_value=-90.0, max_value=90.0),
+    "longitude": FieldRule(
+        expected_types=(int, float), min_value=-180.0, max_value=180.0
+    ),
+    "rating": FieldRule(
+        expected_types=(int, float),
+        min_value=0.0,
+        max_value=5.0,
+        severity=RecordQuality.WARNING,
+    ),
+    "website": FieldRule(
+        missing_severity=RecordQuality.WARNING,
+        is_url=True,
+        severity=RecordQuality.WARNING,
+    ),
 }
 
 
@@ -150,6 +186,16 @@ def map_place_to_record_draft(
         collected_at=collected_at,
         provider_record_id=normalized.provider_record_id,
     )
+
+
+def validate_google_place_record(record: RecordDraft) -> ValidationResult:
+    """Stage 2/4 validation (T051) for a `RecordDraft` built by
+    `map_place_to_record_draft()` — an explicit, separately-callable
+    step, not folded into that function (see this module's docstring
+    for why). The worker calls this after building the draft and
+    before Stage 5 canonical-key computation (T052); a `REJECTED`
+    record should not proceed to persistence."""
+    return validate_record_draft(record, GOOGLE_FIELD_RULES)
 
 
 def _extract_str(raw_item: RawProviderItem, key: str) -> str | None:

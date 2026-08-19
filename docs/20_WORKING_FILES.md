@@ -7,15 +7,24 @@ being changed.
 
 ## Active task
 
-T051 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045, T050
-complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
-prepared but blocked on user action). Phase 4 (Provider) fully
-complete as of T045; Phase 5 (Data pipeline) started with T050.
+T052 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T051 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
+T012/T013 prepared but blocked on user action). Phase 4 (Provider)
+fully complete as of T045; Phase 5 (Data pipeline) in progress.
 
 ## Active files
 
 ``` text
-None yet — T051 has not started.
+None yet — T052 has not started.
+```
+
+## T051 files (complete — for reference)
+
+``` text
+apps/api/app/pipeline/validate.py                    (new)
+apps/api/app/providers/google_maps/mapper.py          (modified — GOOGLE_FIELD_RULES + validate_google_place_record added)
+tests/unit/test_pipeline_validate.py                  (new)
+tests/unit/test_google_maps_mapper.py                 (modified — 3 new tests)
 ```
 
 ## T050 files (complete — for reference)

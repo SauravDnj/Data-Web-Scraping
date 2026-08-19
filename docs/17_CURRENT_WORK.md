@@ -2,36 +2,38 @@
 
 ## Active task
 
-T051 --- Validation pipeline.
+T052 --- Canonical identity.
 
 ## Previous task
 
-T050 --- Normalization pipeline. COMPLETE — `app/pipeline/normalize.py`:
-`FieldKind` + `normalize_record_data()`, Stage 3 of the data pipeline.
-Field kinds are declared by the caller, never guessed from a value's
-shape. NFC-only Unicode normalization (never NFKC). Every transform
-falls back to safe text-only cleanup when a value doesn't match its
-declared kind, never coercing/guessing. Wired immediately into
-`app/providers/google_maps/mapper.py`'s `map_place_to_record_draft()`
-via a new `FIELD_KINDS` constant — not left an orphaned module. 25 new
-tests, including a dedicated regression fixture
-(`tests/fixtures/pipeline/normalize_regression.json`). **Phase 5 (Data
-pipeline) now started.** T045 --- Provider contract tests and all of
-Phase 4 complete before it. See `docs/18_COMPLETED_WORK.md`.
+T051 --- Validation pipeline. COMPLETE — `app/pipeline/validate.py`:
+`RecordQuality`/`FieldRule`/`FieldValidationError`/`ValidationResult`/
+`validate_record_draft()`, Stage 2+4 combined. `missing_severity` vs.
+`severity` are deliberately separate knobs, directly matching docs/08's
+two worked examples ("missing website → warning", "invalid coordinate
+→ rejected"). URL syntax check is syntax-only, never a real request.
+Wired into `app/providers/google_maps/mapper.py` via
+`GOOGLE_FIELD_RULES` + `validate_google_place_record()`, kept as an
+explicit separate step from `map_place_to_record_draft()`. 28 new
+tests. T050 --- Normalization pipeline and all of Phase 4 complete
+before it. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Build the field-level data quality system (read `docs/T051_PROMPT.md`
-before assuming scope) — Stage 2/4 of `docs/08_DATA_PIPELINE_DEEP.md`
-("Schema validation" / "Quality"): define valid/warning/rejected
-states, validate types/ranges/required fields/coordinate ranges/URL
-syntax, produce field-level error objects, preserve job context. This
-operates on a `RecordDraft` (T043's output, now normalized by T050) —
-likely the first real consumer of `app.domain.record_search`'s
-"quality filtering" concept (T036 flagged `has_provider_id` as a
-placeholder pending this task). Acceptance: deterministic, no network
-calls — pure validation logic, same testing approach as every prior
-pipeline/provider task this session.
+Create the deterministic record identity strategy (read
+`docs/T052_PROMPT.md` before assuming scope) — Stage 5 of
+`docs/08_DATA_PIPELINE_DEEP.md`: prefer a stable provider identifier
+when permitted (Google's place `id` — already `RecordDraft.
+provider_record_id`, per T043/`database/DATABASE_DEEP.md`'s "prefer
+it if permitted" guidance), define a fallback canonicalization only
+where genuinely needed, scope the key by project+provider (T000's
+resolved decision: `project_scope + provider + provider_id`, matching
+`records(project_id, canonical_key)`'s unique constraint from T025).
+Must NOT use business name alone as identity. Test repeated-identical/
+minor-formatting-difference/different-businesses cases, and explicitly
+document known collision limitations — acceptance is "false merges
+minimized and documented," not "zero collisions," which would be an
+impossible claim for a fallback heuristic.
 
 ## Not yet in scope
 

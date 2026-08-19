@@ -14,7 +14,7 @@ tests: 0% V1: 0%
   2 Database           IN_PROGRESS        90%
   3 Backend            IN_PROGRESS        85%
   4 Provider           COMPLETE          100%
-  5 Data pipeline      IN_PROGRESS        17%
+  5 Data pipeline      IN_PROGRESS        33%
   6 Worker             PENDING             0%
   7 Frontend           PENDING             0%
   8 Operations         PENDING             0%
@@ -23,15 +23,16 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T051 --- Validation pipeline. (T027 PARTIAL, T012/T013 still open.)
+T052 --- Canonical identity. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T050 --- Normalization pipeline complete and verified (305 passed, 1
-skipped as expected), still no live MySQL needed. Provider-agnostic
-Stage 3 normalization (`app/pipeline/normalize.py`), wired immediately
-into the Google mapper. **Phase 5 (Data pipeline) now started**, Phase
-4 (Provider) fully complete before it.
+T051 --- Validation pipeline complete and verified (333 passed, 1
+skipped as expected), still no live MySQL needed. Stage 2+4 field-level
+quality checks (`app/pipeline/validate.py`), `missing_severity` vs.
+`severity` as separate knobs matching docs/08's own worked examples
+exactly, wired into the Google mapper. T050 --- Normalization pipeline
+and all of Phase 4 complete before it.
 
 ## Rule
 

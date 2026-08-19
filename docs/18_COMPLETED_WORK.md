@@ -1088,3 +1088,42 @@ Evidence:
 Next: T051 --- Validation pipeline (field-level data quality system —
 valid/warning/rejected states, type/range/required-field/coordinate/
 URL validation, deterministic, no network calls).
+
+### T051 --- Validation pipeline
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/pipeline/validate.py`: `RecordQuality` (VALID/WARNING/
+    REJECTED), `FieldRule`, `FieldValidationError`, `ValidationResult`,
+    `validate_record_draft()` — Stage 2 ("Schema validation") + Stage
+    4 ("Quality") combined into one pass, since a field either passes
+    or fails with a severity and the record's overall verdict is just
+    the worst severity among its fields.
+-   **Key decision**: "missing" and "present but invalid" are separate
+    knobs (`missing_severity` vs. `severity`) — directly matching
+    docs/08's two worked examples ("missing website → warning",
+    "invalid coordinate → rejected"), which a single `required: bool`
+    flag could not express together.
+-   Coordinate range validation needed no dedicated mechanism (just
+    `min_value`/`max_value` on a coordinate field); URL syntax
+    validation is syntax-only (`urllib.parse.urlsplit`), never a real
+    request — what makes "no network calls" trivially true.
+    `bool` is explicitly guarded against silently passing a numeric
+    type check.
+-   Wired into `app/providers/google_maps/mapper.py` via
+    `GOOGLE_FIELD_RULES` + `validate_google_place_record()`, an
+    explicit separate step from `map_place_to_record_draft()`, not
+    silently chained into it.
+-   28 new tests across `tests/unit/test_pipeline_validate.py` (one
+    section per IMPLEMENT item) and `tests/unit/test_google_maps_
+    mapper.py` (3 tests proving the real Google field rules produce
+    the right verdict, not just the generic module in isolation).
+-   Verified locally: 333 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (76 source files).
+
+Next: T052 --- Canonical identity (deterministic record identity
+strategy — prefer the stable provider identifier, fallback
+canonicalization only where needed, project+provider scope, documented
+collision limitations).
