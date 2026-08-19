@@ -10,17 +10,17 @@ boundary-sensitive tests."""
 from datetime import UTC, datetime
 
 import fakeredis
-from tests.unit.factories import make_config, make_job, make_project, make_user
-from tests.unit.fakes import FakeProviderAdapter
-from workers.jobs.execute_collection import process_next_job
-from workers.queue import RedisJobQueue
-
 from app.db.session import session_scope
 from app.domain.jobs import JobRunStatus, JobStatus
 from app.pipeline.validate import FieldRule, RecordQuality
 from app.repositories.configs import SqlAlchemyCollectionConfigRepository
 from app.repositories.jobs import SqlAlchemyJobRepository
 from app.repositories.records import SqlAlchemyRecordRepository
+
+from tests.unit.factories import make_config, make_job, make_project, make_user
+from tests.unit.fakes import FakeProviderAdapter
+from workers.jobs.execute_collection import process_next_job
+from workers.queue import RedisJobQueue
 
 NOW = datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC)
 OPERATION = "fake.collect"
@@ -242,6 +242,121 @@ def test_partial_failure_produces_partially_completed_status(session_factory):
         assert persisted_job.counters.records_rejected == 1
 
 
+def test_cancellation_requested_mid_processing_stops_at_a_safe_boundary(
+    session_factory,
+):
+    """T064: simulates a cancellation request arriving while the
+    worker is partway through a batch. `_CancellingProvider.normalize()`
+    requests cancellation (as `JobService.cancel_job()` would, against
+    the same job_repository/session) as a side effect of handling the
+    second item — the loop's own pre-item check only observes this
+    starting with the *third* item, so items 1-2 are processed and
+    persisted normally and item 3 is never touched. Proves "stops at a
+    safe boundary" rather than "stops immediately no matter what"."""
+    raw_items = [
+        {"id": "item-1", "name": "Example Place 1"},
+        {"id": "item-2", "name": "Example Place 2"},
+        {"id": "item-3", "name": "Example Place 3"},
+    ]
+
+    class _CancellingProvider(FakeProviderAdapter):
+        def __init__(self, job_repository, job_id, raw_items):
+            super().__init__(raw_items=raw_items)
+            self._job_repository = job_repository
+            self._job_id = job_id
+            self._normalize_calls = 0
+
+        def normalize(self, raw_item):
+            self._normalize_calls += 1
+            if self._normalize_calls == 2:
+                self._job_repository.request_cancellation(
+                    self._job_id, requested_at=NOW
+                )
+            return super().normalize(raw_item)
+
+    with session_scope(session_factory) as session:
+        project, job, queue, _provider, job_repository = _setup(
+            session, raw_items=raw_items
+        )
+        config_repository = SqlAlchemyCollectionConfigRepository(session)
+        record_repository = SqlAlchemyRecordRepository(session)
+        provider = _CancellingProvider(job_repository, job.id, raw_items)
+
+        outcome = process_next_job(
+            session,
+            queue,
+            provider,
+            job_repository,
+            config_repository,
+            record_repository,
+            field_rules=FIELD_RULES,
+            provider_operation=OPERATION,
+            worker_id="worker-1",
+            now=NOW,
+        )
+
+        assert outcome is not None
+        assert outcome.status == JobStatus.CANCELLED
+        assert provider._normalize_calls == 2  # item 3 never reached
+
+        persisted_job = job_repository.get(job.id)
+        assert persisted_job.status == JobStatus.CANCELLED
+        assert persisted_job.cancel_requested is True
+        assert persisted_job.counters.records_created == 2
+
+        runs = job_repository.list_runs_for_job(job.id)
+        assert runs[0].status == JobRunStatus.CANCELLED
+
+        records = record_repository.list_for_project(project.id).items
+        assert len(records) == 2
+
+        assert queue.list_in_flight() == []  # still acknowledged
+
+
+def test_cancellation_requested_before_any_item_persists_nothing(session_factory):
+    """The edge case where cancellation lands while collect() itself
+    is still running: no item exists yet to check "between", so the
+    request is only observable once collect() returns — still before
+    anything has been normalized or persisted."""
+    raw_items = [{"id": "item-1", "name": "Example Place"}]
+
+    class _PreCancelledProvider(FakeProviderAdapter):
+        def __init__(self, job_repository, job_id, raw_items):
+            super().__init__(raw_items=raw_items)
+            self._job_repository = job_repository
+            self._job_id = job_id
+
+        def collect(self, config):
+            self._job_repository.request_cancellation(self._job_id, requested_at=NOW)
+            yield from self._raw_items
+
+    with session_scope(session_factory) as session:
+        _project, job, queue, _provider, job_repository = _setup(
+            session, raw_items=raw_items
+        )
+        config_repository = SqlAlchemyCollectionConfigRepository(session)
+        record_repository = SqlAlchemyRecordRepository(session)
+        provider = _PreCancelledProvider(job_repository, job.id, raw_items)
+
+        outcome = process_next_job(
+            session,
+            queue,
+            provider,
+            job_repository,
+            config_repository,
+            record_repository,
+            field_rules=FIELD_RULES,
+            provider_operation=OPERATION,
+            worker_id="worker-1",
+            now=NOW,
+        )
+
+        assert outcome.status == JobStatus.CANCELLED
+        persisted_job = job_repository.get(job.id)
+        assert persisted_job.counters.total_units == 0
+        assert record_repository.list_for_project(_project.id).items == []
+
+
 def test_the_job_run_is_created_and_finalized(session_factory):
     with session_scope(session_factory) as session:
         _project, job, queue, provider, job_repository = _setup(session)
@@ -278,7 +393,7 @@ def test_the_queue_message_is_always_acknowledged_even_on_total_failure(
             yield  # pragma: no cover
 
     with session_scope(session_factory) as session:
-        _project, job, queue, _provider, job_repository = _setup(session)
+        _project, _job, queue, _provider, job_repository = _setup(session)
         config_repository = SqlAlchemyCollectionConfigRepository(session)
         record_repository = SqlAlchemyRecordRepository(session)
 

@@ -8,8 +8,6 @@ import copy
 from typing import Any
 
 import pytest
-from tests.unit.factories import make_user
-
 from app.db.session import session_scope
 from app.providers.google_maps.config import (
     MAX_RESULT_COUNT,
@@ -22,6 +20,8 @@ from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError
 from app.services.projects import ProjectService
+
+from tests.unit.factories import make_user
 
 
 def example_config() -> dict[str, Any]:

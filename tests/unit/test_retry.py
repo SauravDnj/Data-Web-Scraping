@@ -9,6 +9,17 @@ from datetime import timedelta
 
 import fakeredis
 import pytest
+from app.db.models import Job as JobRow
+from app.db.session import session_scope
+from app.repositories.audit import SqlAlchemyAuditLogRepository
+from app.repositories.configs import SqlAlchemyCollectionConfigRepository
+from app.repositories.jobs import SqlAlchemyJobRepository
+from app.repositories.projects import SqlAlchemyProjectRepository
+from app.services.audit import AuditService
+from app.services.configs import ConfigurationService
+from app.services.jobs import JobService
+from app.services.projects import ProjectService
+
 from tests.unit.factories import make_user
 from tests.unit.fakes import AlwaysValidValidator
 from workers.jobs.retry import (
@@ -20,17 +31,6 @@ from workers.jobs.retry import (
     should_retry,
 )
 from workers.queue import RedisJobQueue
-
-from app.db.models import Job as JobRow
-from app.db.session import session_scope
-from app.repositories.audit import SqlAlchemyAuditLogRepository
-from app.repositories.configs import SqlAlchemyCollectionConfigRepository
-from app.repositories.jobs import SqlAlchemyJobRepository
-from app.repositories.projects import SqlAlchemyProjectRepository
-from app.services.audit import AuditService
-from app.services.configs import ConfigurationService
-from app.services.jobs import JobService
-from app.services.projects import ProjectService
 
 # --- 1/4. maximum attempts + classify before retry ---
 
@@ -176,7 +176,7 @@ def test_a_never_retried_job_has_a_chain_length_of_zero(session_factory):
 def test_chain_length_grows_by_one_per_retry(session_factory):
     with session_scope(session_factory) as session:
         jobs, job = _make_failed_job(session, error_code="temporary")
-        job_repo, project_repo, audit_repo = _repositories(session)
+        _job_repo, project_repo, audit_repo = _repositories(session)
         project = project_repo.get(job.project_id)
 
         first_retry = jobs.retry_job(job.id, requesting_user_id=project.user_id)
@@ -237,7 +237,7 @@ def test_a_lineage_that_hit_the_attempt_ceiling_is_no_longer_retried(session_fac
     """DO NOT list: never retry indefinitely — enforced end to end,
     not just at the pure should_retry() level."""
     with session_scope(session_factory) as session:
-        jobs, job = _make_failed_job(session, error_code="temporary")
+        _jobs, job = _make_failed_job(session, error_code="temporary")
         job_repo, project_repo, audit_repo = _repositories(session)
         _projects, _configs, job_service = _make_services(session)
         queue = RedisJobQueue(fakeredis.FakeRedis())

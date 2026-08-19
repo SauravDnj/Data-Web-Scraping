@@ -23,6 +23,12 @@ class JobRepository(Protocol):
 
     def claim_queued_job(self, job_id: int, *, started_at: datetime) -> Job | None: ...
 
+    def request_cancellation(
+        self, job_id: int, *, requested_at: datetime
+    ) -> Job | None: ...
+
+    def is_cancellation_requested(self, job_id: int) -> bool: ...
+
     def finalize_job(
         self,
         job_id: int,
@@ -85,6 +91,8 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
             error_code=row.error_code,
             error_message=row.error_message,
             idempotency_key=row.idempotency_key,
+            cancel_requested=row.cancel_requested,
+            cancel_requested_at=row.cancel_requested_at,
         )
 
     def create(self, job: Job) -> Job:
@@ -171,6 +179,43 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
         if result.rowcount == 0:
             return None
         return self.get(job_id)
+
+    def request_cancellation(
+        self, job_id: int, *, requested_at: datetime
+    ) -> Job | None:
+        """T064 item 2 — records a cancellation request without
+        touching `status`. Same atomic-conditional-`UPDATE` shape as
+        `claim_queued_job()`, and for the same reason: only a job a
+        worker is actively executing (`RUNNING`) needs a *request* the
+        worker can observe and act on at its own safe boundary
+        (`workers/jobs/execute_collection.py`). `JobService.cancel_job()`
+        cancels DRAFT/QUEUED/PAUSED jobs immediately instead, via
+        `update_status()`, since no worker owns those right now.
+        Returns `None` if the job is no longer `RUNNING` by the time
+        this executes (it may have just finished) — the caller must
+        re-check the job's current status rather than assume the
+        request landed."""
+        result = cast(
+            CursorResult,
+            self._session.execute(
+                update(JobRow)
+                .where(JobRow.id == job_id, JobRow.status == JobStatus.RUNNING)
+                .values(cancel_requested=True, cancel_requested_at=requested_at)
+            ),
+        )
+        self._session.flush()
+        if result.rowcount == 0:
+            return None
+        return self.get(job_id)
+
+    def is_cancellation_requested(self, job_id: int) -> bool:
+        """A cheap, frequent read — called once per collected item in
+        the worker's main loop (T064 item 3), so it stays a single
+        boolean column fetch rather than the fuller `get()`."""
+        row = self._session.get(JobRow, job_id)
+        if row is None:
+            raise LookupError(f"Job {job_id} does not exist.")
+        return bool(row.cancel_requested)
 
     def finalize_job(
         self,

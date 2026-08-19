@@ -7,14 +7,6 @@ repositories without knowing SQLAlchemy implementation details)."""
 from datetime import timedelta
 
 import pytest
-from tests.unit.factories import (
-    make_job,
-    make_project,
-    make_user,
-    make_user_project_config,
-    utc_now,
-)
-
 from app.db.session import session_scope
 from app.domain.audit import AuditLogEntry
 from app.domain.exports import Export, ExportStatus
@@ -30,6 +22,14 @@ from app.repositories.jobs import SqlAlchemyJobRepository
 from app.repositories.projects import SqlAlchemyProjectRepository
 from app.repositories.records import SqlAlchemyRecordRepository
 from app.repositories.schedules import SqlAlchemyScheduleRepository
+
+from tests.unit.factories import (
+    make_job,
+    make_project,
+    make_user,
+    make_user_project_config,
+    utc_now,
+)
 
 # --- projects -----------------------------------------------------
 

@@ -5,7 +5,6 @@ domain logic really is DB-independent."""
 from datetime import UTC, datetime
 
 import pytest
-
 from app.db.models import (
     ExportStatus as OrmExportStatus,
 )

@@ -8,10 +8,9 @@ of a second copy."""
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy.pool import StaticPool
-
 from app.db.base import Base
 from app.db.session import build_engine, build_session_factory
+from sqlalchemy.pool import StaticPool
 
 
 @pytest.fixture

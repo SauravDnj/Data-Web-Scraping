@@ -4,8 +4,6 @@ revocation — against SQLite in-memory (see tests/unit/test_db_session.py)."""
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from tests.unit.factories import make_user
-
 from app.db.models import User as UserRow
 from app.db.session import session_scope
 from app.domain.auth import AuthSession
@@ -17,6 +15,8 @@ from app.services.auth import (
     _hash_token,
 )
 from app.services.errors import PermissionDeniedError
+
+from tests.unit.factories import make_user
 
 VALID_PASSWORD = "correct horse battery staple"
 

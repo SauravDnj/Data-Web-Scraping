@@ -5,12 +5,11 @@ against SQLite in-memory (see tests/unit/test_db_session.py)."""
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-
 from app.core.security import hash_password, normalize_email
 from app.db.models import CollectionConfig, Job, JobRun, JobStatus, Project, User
 from app.db.session import build_session_factory, session_scope
 from app.domain.job_state_machine import transition
+from sqlalchemy.exc import IntegrityError
 
 
 def _make_user_project_configs(session):

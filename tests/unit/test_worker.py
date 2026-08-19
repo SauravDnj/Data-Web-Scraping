@@ -3,6 +3,7 @@ import time
 
 import pytest
 from pydantic import ValidationError
+
 from workers.config import WorkerSettings
 from workers.worker_main import resolve_worker_id, run
 

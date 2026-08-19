@@ -6,9 +6,6 @@ IMPLEMENT/test item."""
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-from tests.unit.factories import make_job, make_user_project_config
-
 from app.db.models import Record as RecordRow
 from app.db.session import session_scope
 from app.domain.records import Record, RecordDraft
@@ -20,6 +17,9 @@ from app.pipeline.deduplicate import (
     resolve_against_existing,
 )
 from app.repositories.records import SqlAlchemyRecordRepository
+from sqlalchemy.exc import IntegrityError
+
+from tests.unit.factories import make_job, make_user_project_config
 
 BASE_TIME = datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC)
 
@@ -245,7 +245,7 @@ def test_a_batch_with_many_repeats_of_one_record_creates_exactly_one_row(
         repository = SqlAlchemyRecordRepository(session)
         draft = _draft(project.id, job.id)
 
-        outcomes, summary = deduplicate_batch([draft] * 5, repository)
+        _outcomes, summary = deduplicate_batch([draft] * 5, repository)
 
         assert summary.created == 1
         assert summary.duplicates_in_batch == 4

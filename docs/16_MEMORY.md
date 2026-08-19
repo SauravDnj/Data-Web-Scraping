@@ -69,13 +69,14 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T064 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T065 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060-T063 complete — Phase 4 Provider and Phase 5 Data
-pipeline both fully done, Phase 6 Worker in progress. T012/T013
-prepared but NOT verified — see below. See the dated sections further
-down for detail; this header is not updated inline each time, check
-docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
+T050-T055, and T060-T064 complete — Phase 4 Provider and Phase 5 Data
+pipeline both fully done, Phase 6 Worker in progress (T065 is its last
+task). T012/T013 prepared but NOT verified — see below. See the dated
+sections further down for detail; this header is not updated inline
+each time, check docs/17_CURRENT_WORK.md for the authoritative
+up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1689,6 +1690,102 @@ first draft, not the implementation, by tracing through exactly what
 chain length each call would see).
 
 Verified locally: 428 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 files in `apps/api`; 10
+files via the separate `workers/pyproject.toml` mypy invocation).
+
+## Cancellation (T064) — current task now T065, last worker task
+
+New migration `database/migrations/versions/ee8f2297969d_...py`: adds
+`jobs.cancel_requested` (`Boolean NOT NULL server_default='0'`,
+T038's backfill lesson applied again) and `jobs.cancel_requested_at`
+(`DateTime`, nullable) — plain `op.add_column()`, no
+`batch_alter_table` needed (no constraint touched). Verified against
+SQLite both directions (upgrade to head, columns present; downgrade
+one step, columns gone) before writing any code against it.
+
+**Had to reconcile with a pre-existing method, same pattern as T063
+and `retry_job()`**: `JobService.cancel_job()` already existed (T035)
+and did an immediate `update_status(job_id, CANCELLED)` for *any*
+status. That is a real bug for a `RUNNING` job specifically: the
+worker (`workers/jobs/execute_collection.py`) owns a running job's
+status and calls `finalize_job()` at the end of its own loop —
+`CANCELLED` has no legal outgoing transition
+(`app.domain.job_state_machine`), so a worker that finished
+processing just after a hard external cancel would raise
+`InvalidJobTransition` trying to finalize an already-terminal job.
+This is exactly the "ambiguous state" T064's acceptance criterion
+warns against, and it existed in the codebase before this task, not
+introduced by it.
+
+**Resolution — cancellation is immediate or cooperative depending on
+who currently owns the job's status**: `DRAFT`/`QUEUED`/`PAUSED` have
+no worker actively touching them right now, so `cancel_job()` still
+cancels those directly via `update_status()` (T035's original
+behavior, unchanged). `RUNNING` is different — no worker owns the
+`status` column mid-execution;\* `cancel_job()` now calls the new
+`JobRepository.request_cancellation()` (an atomic conditional
+`UPDATE ... WHERE status='running'`, same shape as T061's
+`claim_queued_job()` and for the same race-safety reason) to set
+`cancel_requested`/`cancel_requested_at` without touching `status` at
+all. The worker's own loop is the only thing that ever transitions a
+`RUNNING` job to `CANCELLED`. An already-terminal job (including an
+already-`CANCELLED` one) is rejected up front via
+`app.domain.job_state_machine.TERMINAL_STATUSES` (item 6). Audit
+events now carry `details={"mode": "immediate" | "requested"}` so the
+two paths stay distinguishable after the fact.
+
+\* Typo guard for future readers: "no worker owns the `status` column"
+means `JobService` must not write it for a `RUNNING` job — the worker
+still does, later, via `finalize_job()`.
+
+**Worker-side (`workers/jobs/execute_collection.py`)**: new
+`JobRepository.is_cancellation_requested(job_id)` (cheap single-column
+read) is checked at two points — once right after `provider.collect()`
+returns (covers a request that arrived while collection itself was
+still running, before any item existed to check "between") and once
+per raw item, in the same spot as T062's `heartbeat.maybe_beat()`,
+*before* that item is normalized/validated. A cancellation observed
+mid-batch stops the loop immediately — everything already
+validated/persisted from earlier items in the same batch stands
+as-is (T054's per-record `SAVEPOINT` persistence, T055's counters,
+both already reflect only what was actually processed); nothing later
+is invented, retried, or rolled back beyond that point. `_execute()`
+returns `JobStatus.CANCELLED` instead of the normal completed/failed/
+partially_completed decision when this happened;
+`JobRunStatus.CANCELLED` (already existed on the enum, just never
+produced before) is now what `finish_run()` records for that case.
+
+**Known, documented limitation — not solved, by design**: `raw_items
+= list(provider.collect(config.config))` (T061) eagerly materializes
+the entire page sequence before the per-item loop begins, so a
+cancellation request cannot interrupt `collect()` itself mid-flight
+(e.g. between two Google Places pages) — only before or after it as a
+whole. Making `collect()` genuinely interruptible mid-generator would
+require passing a cancellation check down into
+`ProviderAdapter.collect()`'s own Protocol signature (T040), which no
+task has asked for and would ripple into every existing adapter
+(`GoogleMapsProvider`, `FakeProviderAdapter`). Recorded here rather
+than worked around, matching T063's own "documented scope boundary,
+not a bug" precedent for its un-enforced backoff delay.
+
+10 new tests: 4 service-level (`tests/unit/test_job_service.py` —
+`RUNNING` only requests and leaves status unchanged,
+`QUEUED` cancels immediately, all 4 terminal statuses parametrized and
+rejected, plus the existing T035 cancel test continues to pass
+unchanged since it exercises the immediate/`QUEUED` path) and 2
+worker-level (`tests/integration/test_execute_collection.py` — a
+cancellation requested as a side effect mid-batch via a
+`_CancellingProvider.normalize()` override stops exactly at the
+expected item, persists exactly the earlier ones, and leaves the
+queue acknowledged; a cancellation requested during `collect()`
+itself persists nothing at all). Also fixed 6 pre-existing,
+unrelated `RUF059` (unused-unpacked-variable) lint findings surfaced
+by running `ruff check --fix` across the whole `tests/` tree for the
+first time in a while (mechanical `_`-prefix fixes only, verified via
+the full suite still passing) — not part of T064's own logic, called
+out separately so it doesn't read as a hidden functional change.
+
+Verified locally: 436 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (80 files in `apps/api`; 10
 files via the separate `workers/pyproject.toml` mypy invocation).
 

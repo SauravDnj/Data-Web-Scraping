@@ -3,7 +3,6 @@ illegal transitions, and the literal acceptance criteria — pure
 Python, no database."""
 
 import pytest
-
 from app.domain.job_state_machine import (
     TERMINAL_STATUSES,
     InvalidJobTransition,

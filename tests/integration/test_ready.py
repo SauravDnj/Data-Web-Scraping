@@ -1,10 +1,9 @@
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.dependencies import DependencyStatus, check_database, check_redis
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 

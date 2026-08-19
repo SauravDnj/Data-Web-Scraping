@@ -124,7 +124,12 @@
 -   [x] T063 Retry system (`workers/jobs/retry.py` — bounded via the
         existing audit trail, no schema change; every error category
         tested end-to-end — see docs/16_MEMORY.md)
--   [ ] T064--T065 worker
+-   [x] T064 Cancellation (`jobs.cancel_requested`/
+        `cancel_requested_at` — immediate for DRAFT/QUEUED/PAUSED,
+        cooperative request-flag for RUNNING; reconciled a real
+        pre-existing race in T035's `cancel_job()` — see
+        docs/16_MEMORY.md)
+-   [ ] T065 worker recovery
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality

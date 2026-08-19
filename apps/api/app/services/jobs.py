@@ -4,8 +4,11 @@ retry. No provider calls here — that belongs to the worker
 (T032), the T031 state machine, and other services (T033/T034),
 reused rather than duplicated."""
 
+from datetime import UTC, datetime
+
 from app.domain.audit_actions import AuditAction
 from app.domain.job_errors import is_retryable
+from app.domain.job_state_machine import TERMINAL_STATUSES
 from app.domain.jobs import Job, JobStatus
 from app.repositories.jobs import JobRepository
 from app.services.audit import AuditService
@@ -85,15 +88,52 @@ class JobService:
         return self._require_owned_job(job_id, requesting_user_id)
 
     def cancel_job(self, job_id: int, *, requesting_user_id: int) -> Job:
-        self._require_owned_job(job_id, requesting_user_id)
-        cancelled = self._jobs.update_status(job_id, JobStatus.CANCELLED)
+        """T064: cancellation is immediate for DRAFT/QUEUED/PAUSED (no
+        worker owns the job right now, so a direct status transition
+        can't race anything) but *cooperative* for RUNNING — flipping
+        `status` straight to CANCELLED here would race the worker's
+        own `finalize_job()` call at the end of
+        `workers/jobs/execute_collection.py`, and CANCELLED has no
+        legal outgoing transition (app.domain.job_state_machine), so a
+        worker that finished just after a hard cancel would crash
+        trying to finalize an already-terminal job. Instead this only
+        records the request; the worker observes it between safe units
+        and finalizes the job itself, so the job is never left in an
+        ambiguous state."""
+        job = self._require_owned_job(job_id, requesting_user_id)
+        if job.status in TERMINAL_STATUSES:
+            raise InvalidStateError(
+                f"Job {job_id} is already {job.status.value} and cannot be cancelled."
+            )
+
+        if job.status == JobStatus.RUNNING:
+            requested = self._jobs.request_cancellation(
+                job_id, requested_at=datetime.now(UTC)
+            )
+            if requested is None:
+                # Finished between _require_owned_job()'s read and the
+                # UPDATE above — report the real current state rather
+                # than claiming a cancellation that never landed.
+                current = self._jobs.get(job_id)
+                assert current is not None
+                raise InvalidStateError(
+                    f"Job {job_id} is already {current.status.value} "
+                    "and cannot be cancelled."
+                )
+            result = requested
+            mode = "requested"
+        else:
+            result = self._jobs.update_status(job_id, JobStatus.CANCELLED)
+            mode = "immediate"
+
         self._audit.record_event(
             actor_user_id=requesting_user_id,
             action=AuditAction.JOB_CANCELLED,
             entity_type="job",
             entity_id=job_id,
+            details={"mode": mode},
         )
-        return cancelled
+        return result
 
     def pause_job(self, job_id: int, *, requesting_user_id: int) -> Job:
         """Only legal from RUNNING — enforced by the T031 state

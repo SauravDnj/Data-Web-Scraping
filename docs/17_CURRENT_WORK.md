@@ -2,42 +2,44 @@
 
 ## Active task
 
-T064 --- Cancellation.
+T065 --- Worker recovery.
 
 ## Previous task
 
-T063 --- Retry system. COMPLETE — `workers/jobs/retry.py`:
-`RetryPolicy`/`should_retry()`/`compute_backoff_delay()` (pure) +
-`count_retry_chain_length()`/`retry_failed_job()` (DB-touching).
-Discovered T035's `retry_job()` (already the canonical "new Job row"
-retry mechanism, since `FAILED` is a terminal state in T031's machine)
-had no attempt bound at all — a genuine "retry indefinitely" gap,
-closed here via `count_retry_chain_length()` walking the existing
-`JOB_RETRIED` audit trail (T037) backward, no schema migration needed.
-Backoff is defined and thoroughly tested as a pure function but not
-yet enforced as real delayed queue delivery (no delayed-delivery
-primitive exists in `RedisJobQueue`, T060) — documented as a
-deliberate scope boundary; the hard attempt ceiling alone already
-prevents retry storms. All 7 `ProviderErrorCategory` values tested
-against their actual retry outcome. 25 new tests. See
-`docs/18_COMPLETED_WORK.md`.
+T064 --- Cancellation. COMPLETE — new `jobs.cancel_requested`/
+`cancel_requested_at` columns (migration `ee8f2297969d`); reconciled
+with T035's pre-existing `JobService.cancel_job()` (found it hard-
+transitioned a `RUNNING` job's status directly, which could race the
+worker's own `finalize_job()` and leave an `InvalidJobTransition`
+crash waiting to happen — exactly the "ambiguous state" this task
+exists to prevent). `cancel_job()` now cancels
+DRAFT/QUEUED/PAUSED jobs immediately (no worker owns them) but only
+*requests* cancellation for a `RUNNING` job, via the new atomic
+`JobRepository.request_cancellation()` (same conditional-`UPDATE`
+shape as T061's `claim_queued_job()`). The worker
+(`workers/jobs/execute_collection.py`) checks
+`is_cancellation_requested()` between items (same spot as T062's
+heartbeat) and stops at that safe boundary, keeping whatever was
+already persisted from earlier items in the batch. Already-terminal
+jobs (including already-`CANCELLED`) are rejected up front. 10 new
+tests. See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement cooperative job cancellation (read `docs/T064_PROMPT.md`
-before assuming scope) — a cancellation-request state distinct from
-the terminal `CANCELLED` status (T031's state machine already allows
-`queued→cancelled`/`running→cancelled`/`paused→cancelled`, but has no
-"please stop, still running" intermediate signal), an API-facing way
-to record that request (though no job API routes exist yet, T070+ —
-check whether this task expects a service-layer method only, or a
-real route), the worker checking for a pending cancellation between
-safe units of work during `collect()`/persistence (T061's loop),
-stopping at a safe boundary rather than mid-record, and finalizing as
-`CANCELLED` cleanly — no ambiguous partial DB state, no orphaned
-in-flight queue message. Prevent cancelling an already-terminal job.
-Test cancellation actually interrupting active processing, not just
-a pre-emptive check before any work starts.
+Implement worker recovery (read `docs/T065_PROMPT.md` before assuming
+scope) — detect stale `JobRun`s (T062's `list_stale_running_runs()`
+already exists and is unused by any caller yet), decide whether the
+owning job is retryable and safely requeue it via T063's
+`retry_failed_job()` machinery (or an equivalent path — check whether
+recovery should create a new attempt on the SAME job or go through
+T035/T063's "retry = new Job row" pattern; T065's own IMPLEMENT list
+says "increment attempt safely," which may mean a same-job re-run
+distinct from T063's user-initiated retry, needs a design decision
+same as T041/T052/T063 before writing code), mark exhausted jobs
+failed, and guarantee only one active execution owner exists at a
+time (no duplicate processing from a crashed-then-recovered worker
+racing a still-alive one). Test a simulated crash, duplicate queue
+delivery, and recovery after heartbeat loss specifically.
 
 ## Not yet in scope
 

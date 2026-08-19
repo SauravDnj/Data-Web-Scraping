@@ -4,11 +4,10 @@ No real project-scoped route exists yet (those land at T070+) — this
 mounts throwaway routes on a fresh FastAPI app with only the handlers
 under test registered, the only way to exercise this mapping today."""
 
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from app.api.service_errors import register_service_error_handlers
 from app.services.errors import InvalidStateError, NotFoundError, PermissionDeniedError
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 
 def _make_client() -> TestClient:

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, BigIntegerPK
@@ -58,6 +58,17 @@ class Job(Base):
     # retried requests. Unique, nullable (not every caller supplies one).
     idempotency_key: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True
+    )
+    # T064: a cooperative cancellation request. Only meaningful while a
+    # worker owns this job's status (RUNNING) — the worker's own
+    # execute_collection loop is what actually transitions the job to
+    # CANCELLED at a safe boundary; JobService never flips a running
+    # job's status directly (see JobService.cancel_job's docstring).
+    cancel_requested: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
     )
 
 

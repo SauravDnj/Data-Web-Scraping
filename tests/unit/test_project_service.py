@@ -3,8 +3,6 @@ against SQLite in-memory via the real repositories (T032), same
 rationale as tests/unit/test_db_session.py."""
 
 import pytest
-from tests.unit.factories import make_user
-
 from app.db.session import session_scope
 from app.domain.projects import ProjectStatus
 from app.repositories.audit import SqlAlchemyAuditLogRepository
@@ -12,6 +10,8 @@ from app.repositories.projects import SqlAlchemyProjectRepository
 from app.services.audit import AuditService
 from app.services.errors import InvalidStateError, NotFoundError, PermissionDeniedError
 from app.services.projects import ProjectService
+
+from tests.unit.factories import make_user
 
 
 def _make_service(session) -> ProjectService:

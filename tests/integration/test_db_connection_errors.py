@@ -4,10 +4,9 @@ dev MySQL, whose availability changes as T012 progresses) so this
 test's outcome doesn't depend on local environment state."""
 
 import pytest
+from app.db.session import build_engine, build_session_factory, session_scope
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-
-from app.db.session import build_engine, build_session_factory, session_scope
 
 UNREACHABLE_DATABASE_URL = "mysql+pymysql://nobody:nothing@127.0.0.1:1/does_not_exist"
 

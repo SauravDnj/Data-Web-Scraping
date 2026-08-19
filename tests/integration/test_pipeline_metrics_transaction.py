@@ -7,8 +7,6 @@ kind of transaction-boundary test."""
 
 from datetime import UTC, datetime
 
-from tests.unit.factories import make_job, make_user_project_config
-
 from app.db.session import session_scope
 from app.domain.jobs import JobCounters
 from app.domain.records import RecordDraft
@@ -17,6 +15,8 @@ from app.pipeline.persist import persist_batch
 from app.pipeline.validate import RecordQuality, ValidationResult
 from app.repositories.jobs import SqlAlchemyJobRepository
 from app.repositories.records import SqlAlchemyRecordRepository
+
+from tests.unit.factories import make_job, make_user_project_config
 
 BASE_TIME = datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC)
 OPERATION = "google_maps.places.text_search"

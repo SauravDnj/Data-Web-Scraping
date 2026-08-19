@@ -1,13 +1,13 @@
 """T037 tests: action names, secret redaction, and queryability —
 against SQLite in-memory (see tests/unit/test_db_session.py)."""
 
-from tests.unit.factories import make_user
-
 from app.db.session import session_scope
 from app.domain.audit_actions import AuditAction
 from app.domain.audit_redaction import redact_details
 from app.repositories.audit import SqlAlchemyAuditLogRepository
 from app.services.audit import AuditService
+
+from tests.unit.factories import make_user
 
 
 def test_redact_details_scrubs_known_sensitive_keys():

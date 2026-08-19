@@ -8,12 +8,11 @@ DATABASE_URL, same technique as T014's dependency-override tests."""
 from collections.abc import Iterator
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.security import hash_password, normalize_email
 from app.db.models import User as UserRow
 from app.db.session import get_db, session_scope
 from app.main import app
+from fastapi.testclient import TestClient
 
 VALID_PASSWORD = "correct horse battery staple"
 

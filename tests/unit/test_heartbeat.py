@@ -6,12 +6,12 @@ real sleeps, no `datetime.now()` calls anywhere in this file."""
 
 from datetime import UTC, datetime, timedelta
 
-from tests.unit.factories import make_config, make_job, make_project, make_user
-from workers.jobs.heartbeat import HeartbeatUpdater, find_stale_job_runs
-
 from app.db.session import session_scope
 from app.domain.jobs import JobRun, JobRunStatus, JobStatus
 from app.repositories.jobs import SqlAlchemyJobRepository
+
+from tests.unit.factories import make_config, make_job, make_project, make_user
+from workers.jobs.heartbeat import HeartbeatUpdater, find_stale_job_runs
 
 T0 = datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC)
 INTERVAL = timedelta(seconds=30)

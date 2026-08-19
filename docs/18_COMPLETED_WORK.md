@@ -1462,6 +1462,62 @@ Evidence:
     across all three Python trees, mypy clean (80 files in `apps/api`;
     10 files via the separate `workers/pyproject.toml` invocation).
 
-Next: T064 --- Cancellation (cooperative job cancellation — a request
-state distinct from the terminal CANCELLED status, worker checks
-between safe units, clean finalization, no ambiguous DB state).
+### T064 --- Cancellation
+
+Status: COMPLETE
+
+Evidence:
+
+-   New migration `ee8f2297969d`: `jobs.cancel_requested`
+    (`Boolean NOT NULL server_default='0'`) + `jobs.cancel_requested_at`
+    (`DateTime`, nullable). Verified upgrade/downgrade against SQLite
+    directly before writing any code against it.
+-   **Reconciled with a pre-existing bug, same pattern as T063 and
+    `retry_job()`**: `JobService.cancel_job()` already existed (T035)
+    and hard-transitioned ANY job (including `RUNNING`) straight to
+    `CANCELLED`. For a `RUNNING` job this raced the worker's own
+    `finalize_job()` call — `CANCELLED` has no legal outgoing
+    transition, so a worker finishing just after an external hard
+    cancel would crash trying to finalize an already-terminal job.
+    Exactly the "ambiguous state" this task's acceptance criterion
+    warns against, and it predates this task.
+-   Fix: `cancel_job()` now branches on who owns the job's status.
+    DRAFT/QUEUED/PAUSED (no worker owns these right now) still cancel
+    immediately via `update_status()`. RUNNING (owned by a worker)
+    only *requests* cancellation via the new
+    `JobRepository.request_cancellation()` — an atomic conditional
+    `UPDATE ... WHERE status='running'`, same race-safe shape as
+    T061's `claim_queued_job()`. Already-terminal jobs (including an
+    already-`CANCELLED` one) are rejected up front via
+    `app.domain.job_state_machine.TERMINAL_STATUSES`.
+-   Worker side (`workers/jobs/execute_collection.py`): new
+    `JobRepository.is_cancellation_requested()` checked once right
+    after `collect()` returns and once per raw item (same spot as
+    T062's heartbeat, before that item is touched). A cancellation
+    observed mid-batch stops the loop at that item; everything already
+    validated/persisted from earlier items in the batch stands as-is.
+    `_execute()` returns `JobStatus.CANCELLED`;
+    `JobRunStatus.CANCELLED` (already on the enum, never produced
+    before) is what `finish_run()` now records for that case.
+-   Documented, deliberate limitation: `collect()`'s raw items are
+    still materialized eagerly (T061), so a request can't interrupt
+    collection itself mid-flight — only before or after it as a whole.
+    Making that interruptible would mean changing
+    `ProviderAdapter.collect()`'s own Protocol signature (T040), which
+    no task has asked for; not built speculatively.
+-   10 new tests: 4 service-level (running-only-requests,
+    queued-cancels-immediately, all 4 terminal statuses rejected
+    parametrized) + 2 worker-level (mid-batch cancellation stops at
+    the expected item and persists exactly the earlier ones;
+    cancellation during `collect()` itself persists nothing).
+-   Also fixed 6 pre-existing, unrelated `RUF059` lint findings across
+    the test tree (mechanical `_`-prefix fixes, unrelated to this
+    task's own logic, verified via the full suite still passing).
+-   Verified locally: 436 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    10 files via the separate `workers/pyproject.toml` invocation).
+
+Next: T065 --- Worker recovery (detect stale job runs after a worker
+crash, decide retryability, requeue or fail exhausted jobs, guarantee
+a single active execution owner, test simulated crash / duplicate
+delivery / heartbeat loss).

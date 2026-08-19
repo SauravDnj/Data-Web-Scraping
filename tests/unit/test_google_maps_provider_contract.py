@@ -13,7 +13,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 from app.domain.provider_contracts import ProviderErrorCategory
 from app.providers.base import ProviderAdapter
 from app.providers.google_maps.client import GoogleMapsApiError

@@ -3,11 +3,10 @@ historical versions, and deterministic active-version selection —
 against SQLite in-memory (see tests/unit/test_db_session.py)."""
 
 import pytest
-from sqlalchemy.exc import IntegrityError, NoResultFound
-
 from app.core.security import hash_password, normalize_email
 from app.db.models import CollectionConfig, Project, User
 from app.db.session import build_session_factory, session_scope
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 
 def _make_user(session, email: str = "owner@example.com") -> User:

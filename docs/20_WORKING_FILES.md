@@ -7,17 +7,30 @@ being changed.
 
 ## Active task
 
-T064 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T063 complete; T027 PARTIAL — see
+T065 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T064 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
 (Provider) and Phase 5 (Data pipeline) both fully complete. Phase 6
-(Worker) in progress.
+(Worker) in progress — T065 is its last task.
 
 ## Active files
 
 ``` text
-None yet — T064 has not started.
+None yet — T065 has not started.
+```
+
+## T064 files (complete — for reference)
+
+``` text
+database/migrations/versions/ee8f2297969d_add_cancel_requested_fields_to_jobs.py  (new)
+apps/api/app/domain/jobs.py                     (modified — cancel_requested/cancel_requested_at added to Job)
+apps/api/app/db/models/job.py                   (modified — matching columns)
+apps/api/app/repositories/jobs.py                (modified — request_cancellation/is_cancellation_requested added)
+apps/api/app/services/jobs.py                    (modified — cancel_job() reconciled: immediate vs. cooperative)
+workers/jobs/execute_collection.py               (modified — cancellation checked between items, safe-boundary stop)
+tests/unit/test_job_service.py                   (modified — 6 new tests)
+tests/integration/test_execute_collection.py     (modified — 2 new tests)
 ```
 
 ## T063 files (complete — for reference)

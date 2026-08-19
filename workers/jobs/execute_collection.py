@@ -16,6 +16,15 @@ Updated at T062 to wire in `workers.jobs.heartbeat.HeartbeatUpdater`
 heartbeat_at` column default with no periodic refresh during
 execution).
 
+Updated at T064 to check `JobRepository.is_cancellation_requested()`
+between items (a "safe unit" per T064's own wording) and, when set,
+stop consuming further items and finalize as `JobStatus.CANCELLED`
+instead of the normal completed/partially_completed/failed decision
+below. `JobService.cancel_job()` (app/services/jobs.py) is the only
+writer of the request flag for a `RUNNING` job — it never flips
+`status` directly for one, precisely so this loop stays the single
+place a running job's terminal status is decided.
+
 Maps directly onto T061's 17 IMPLEMENT items, in the order they run:
 
 1.  Dequeue job ID — `queue.dequeue()` (T060).
@@ -163,6 +172,8 @@ def process_next_job(
             status=(
                 JobRunStatus.FAILED
                 if status == JobStatus.FAILED
+                else JobRunStatus.CANCELLED
+                if status == JobStatus.CANCELLED
                 else JobRunStatus.COMPLETED
             ),
             finished_at=now,
@@ -212,8 +223,25 @@ def _execute(
     assert job.id is not None
     drafts: list[RecordDraft] = []
     validation_results: list[ValidationResult] = []
+    # A cancellation requested while collect() itself was still
+    # running (before any item existed to check between) is only
+    # observable here, once collect() has returned — still a safe
+    # boundary, since nothing has been normalized/persisted yet.
+    cancelled = job_repository.is_cancellation_requested(job.id)
     for raw_item in raw_items:
+        if cancelled:
+            break
         heartbeat.maybe_beat(now)  # item 1 — interval-gated, cheap to call per item
+        # T064 item 3 — checked between safe units, same spot as the
+        # heartbeat: a "safe unit" here is one whole raw item. Checked
+        # *before* touching this item, so a cancellation observed here
+        # means this item (and everything after it) is never
+        # processed — whatever was validated/persisted from earlier
+        # items in this batch stands as-is (item 4, "stop at a safe
+        # boundary").
+        if job_repository.is_cancellation_requested(job.id):
+            cancelled = True
+            break
         normalized = provider.normalize(raw_item)
         draft = RecordDraft(
             project_id=job.project_id,
@@ -235,6 +263,8 @@ def _execute(
     counters = compute_job_counters(validation_results, persist_outcomes)
     job_repository.update_counters(job.id, counters)
 
+    if cancelled:
+        return JobStatus.CANCELLED, None
     if counters.total_units == 0 or counters.failed_units == 0:
         return JobStatus.COMPLETED, None
     if counters.successful_units == 0:

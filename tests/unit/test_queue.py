@@ -7,6 +7,7 @@ One section per T060 IMPLEMENT item."""
 
 import fakeredis
 import pytest
+
 from workers.queue import RedisJobQueue
 
 

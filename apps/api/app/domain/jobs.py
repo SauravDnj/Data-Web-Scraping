@@ -71,6 +71,8 @@ class Job:
     error_code: str | None = None
     error_message: str | None = None
     idempotency_key: str | None = None
+    cancel_requested: bool = False
+    cancel_requested_at: datetime | None = None
 
 
 @dataclass(frozen=True)

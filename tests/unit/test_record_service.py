@@ -6,8 +6,6 @@ tests/unit/test_db_session.py)."""
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from tests.unit.factories import make_job, make_project, make_user
-
 from app.db.models import CollectionConfig
 from app.db.session import session_scope
 from app.domain.record_search import RecordSearchFilters, RecordSort, RecordSortField
@@ -19,6 +17,8 @@ from app.services.audit import AuditService
 from app.services.errors import NotFoundError, PermissionDeniedError
 from app.services.projects import ProjectService
 from app.services.records import RecordService
+
+from tests.unit.factories import make_job, make_project, make_user
 
 
 def _make_services(session):

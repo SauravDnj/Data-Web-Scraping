@@ -4,8 +4,6 @@ literal T040 acceptance criterion: "Fake provider can satisfy the
 interface and run through tests." """
 
 import pytest
-from tests.unit.fakes import FakeProviderAdapter
-
 from app.domain.provider_contracts import (
     NormalizedItem,
     ProviderErrorCategory,
@@ -13,6 +11,8 @@ from app.domain.provider_contracts import (
     UsageEstimate,
 )
 from app.providers.base import ProviderAdapter
+
+from tests.unit.fakes import FakeProviderAdapter
 
 
 def test_fake_provider_satisfies_the_protocol():

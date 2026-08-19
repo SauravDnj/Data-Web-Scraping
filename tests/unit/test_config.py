@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from app.core.config import Settings
+from pydantic import ValidationError
 
 
 def test_settings_requires_mandatory_infrastructure_vars(monkeypatch):

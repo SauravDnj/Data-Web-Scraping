@@ -5,7 +5,6 @@ context. No network, no real Google error — GoogleMapsApiError is
 constructed directly."""
 
 import pytest
-
 from app.domain.provider_contracts import ProviderErrorCategory
 from app.providers.google_maps.client import GoogleMapsApiError
 from app.providers.google_maps.errors import classify_google_maps_error

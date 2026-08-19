@@ -5,11 +5,10 @@ canonical_key uniqueness/dedup strategy — against SQLite in-memory
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-
 from app.core.security import hash_password, normalize_email
 from app.db.models import CollectionConfig, Job, Project, Record, RecordProvenance, User
 from app.db.session import build_session_factory, session_scope
+from sqlalchemy.exc import IntegrityError
 
 
 def _make_user_project_job(session, email: str = "owner@example.com"):

@@ -10,14 +10,14 @@ mid-transaction state."""
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
-from tests.unit.factories import make_job, make_user_project_config
-
 from app.db.models import RecordProvenance as RecordProvenanceRow
 from app.db.session import session_scope
 from app.domain.records import Record, RecordDraft
 from app.pipeline.persist import PersistAction, persist_batch
 from app.repositories.records import RecordRepository, SqlAlchemyRecordRepository
+from sqlalchemy import select
+
+from tests.unit.factories import make_job, make_user_project_config
 
 BASE_TIME = datetime(2026, 8, 20, 12, 0, 0, tzinfo=UTC)
 OPERATION = "google_maps.places.text_search"
@@ -105,7 +105,7 @@ def test_a_repeat_collection_updates_the_existing_record(session_factory):
             repository,
             provider_operation=OPERATION,
         )
-        outcomes, summary = persist_batch(
+        _outcomes, summary = persist_batch(
             session,
             [_draft(project.id, job_2.id, data={"rating": 4.8})],
             repository,
@@ -128,7 +128,7 @@ def test_update_existing_false_skips_without_writing(session_factory):
             repository,
             provider_operation=OPERATION,
         )
-        outcomes, summary = persist_batch(
+        _outcomes, summary = persist_batch(
             session,
             [_draft(project.id, job.id, data={"rating": 4.8})],
             repository,

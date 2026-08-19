@@ -2,10 +2,9 @@
 idempotency, and gated retry — against SQLite in-memory via the real
 repositories/services, same rationale as tests/unit/test_db_session.py."""
 
-import pytest
-from tests.unit.factories import make_user
-from tests.unit.fakes import AlwaysValidValidator
+from datetime import UTC, datetime
 
+import pytest
 from app.db.models import Job as JobRow
 from app.db.session import session_scope
 from app.domain.job_state_machine import InvalidJobTransition
@@ -19,6 +18,9 @@ from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError, NotFoundError, PermissionDeniedError
 from app.services.jobs import JobService
 from app.services.projects import ProjectService
+
+from tests.unit.factories import make_user
+from tests.unit.fakes import AlwaysValidValidator
 
 
 def _make_services(session):
@@ -131,6 +133,75 @@ def test_cancel_job_transitions_and_records_audit_event(session_factory):
 
         audit = SqlAlchemyAuditLogRepository(session).list_for_user(user.id)
         assert any(entry.action == "job.cancelled" for entry in audit.items)
+
+
+def test_cancel_of_a_running_job_only_requests_cancellation(session_factory):
+    """T064: a RUNNING job is owned by a worker — cancel_job() must
+    not flip its status directly (that would race the worker's own
+    finalize_job() call); it only records the request for the worker
+    to observe."""
+    with session_scope(session_factory) as session:
+        user = make_user(session)
+        projects, configs, jobs = _make_services(session)
+        project = _make_project_with_active_config(projects, configs, user.id)
+        job = jobs.create_job(project.id, requesting_user_id=user.id)
+        SqlAlchemyJobRepository(session).update_status(job.id, JobStatus.RUNNING)
+
+        result = jobs.cancel_job(job.id, requesting_user_id=user.id)
+
+        assert result.status == JobStatus.RUNNING  # unchanged
+        assert result.cancel_requested is True
+        assert result.cancel_requested_at is not None
+
+        audit = SqlAlchemyAuditLogRepository(session).list_for_user(user.id)
+        cancel_events = [e for e in audit.items if e.action == "job.cancelled"]
+        assert len(cancel_events) == 1
+        assert cancel_events[0].details == {"mode": "requested"}
+
+
+def test_cancel_of_a_queued_job_transitions_immediately(session_factory):
+    with session_scope(session_factory) as session:
+        user = make_user(session)
+        projects, configs, jobs = _make_services(session)
+        project = _make_project_with_active_config(projects, configs, user.id)
+        job = jobs.create_job(project.id, requesting_user_id=user.id)  # QUEUED
+
+        result = jobs.cancel_job(job.id, requesting_user_id=user.id)
+
+        assert result.status == JobStatus.CANCELLED
+        assert result.cancel_requested is False  # never went through the flag path
+
+        audit = SqlAlchemyAuditLogRepository(session).list_for_user(user.id)
+        cancel_events = [e for e in audit.items if e.action == "job.cancelled"]
+        assert cancel_events[0].details == {"mode": "immediate"}
+
+
+@pytest.mark.parametrize(
+    "target_status",
+    [
+        JobStatus.COMPLETED,
+        JobStatus.PARTIALLY_COMPLETED,
+        JobStatus.FAILED,
+        JobStatus.CANCELLED,
+    ],
+)
+def test_cancel_rejected_for_an_already_terminal_job(session_factory, target_status):
+    with session_scope(session_factory) as session:
+        user = make_user(session)
+        projects, configs, jobs = _make_services(session)
+        project = _make_project_with_active_config(projects, configs, user.id)
+        job = jobs.create_job(project.id, requesting_user_id=user.id)
+        repo = SqlAlchemyJobRepository(session)
+        repo.update_status(job.id, JobStatus.RUNNING)
+        if target_status != JobStatus.CANCELLED:
+            repo.finalize_job(
+                job.id, status=target_status, finished_at=datetime.now(UTC)
+            )
+        else:
+            repo.update_status(job.id, JobStatus.CANCELLED)
+
+        with pytest.raises(InvalidStateError, match="cannot be cancelled"):
+            jobs.cancel_job(job.id, requesting_user_id=user.id)
 
 
 def test_pause_only_legal_from_running(session_factory):

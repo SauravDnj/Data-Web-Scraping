@@ -3,13 +3,6 @@ historical configuration — against SQLite in-memory via the real
 repositories (T032), same rationale as tests/unit/test_db_session.py."""
 
 import pytest
-from tests.unit.factories import make_user
-from tests.unit.fakes import (
-    AlwaysInvalidValidator,
-    AlwaysValidValidator,
-    RequiresQueryFieldValidator,
-)
-
 from app.db.session import session_scope
 from app.repositories.audit import SqlAlchemyAuditLogRepository
 from app.repositories.configs import SqlAlchemyCollectionConfigRepository
@@ -18,6 +11,13 @@ from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
 from app.services.errors import InvalidStateError, PermissionDeniedError
 from app.services.projects import ProjectService
+
+from tests.unit.factories import make_user
+from tests.unit.fakes import (
+    AlwaysInvalidValidator,
+    AlwaysValidValidator,
+    RequiresQueryFieldValidator,
+)
 
 
 def _make_services(session, validator=None):

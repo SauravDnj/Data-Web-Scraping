@@ -4,11 +4,10 @@ tests/unit/test_db_session.py; a real migration-applied users table is
 proven separately in tests/integration/test_migrations.py)."""
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-
 from app.core.security import hash_password, normalize_email, verify_password
 from app.db.models import User, UserStatus
 from app.db.session import build_session_factory, session_scope
+from sqlalchemy.exc import IntegrityError
 
 
 def _make_user(

@@ -7,7 +7,6 @@ formatting differences, different businesses, and the DO NOT rule
 from datetime import UTC, datetime
 
 import pytest
-
 from app.domain.records import RecordDraft
 from app.pipeline.canonical_identity import (
     CanonicalIdentityError,

@@ -4,11 +4,10 @@ independent of which database dialect is behind it. MySQL-specific
 verification lives in tests/integration/test_db_mysql.py."""
 
 import pytest
-from sqlalchemy import Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
-
 from app.db.base import Base
 from app.db.session import build_session_factory, session_scope
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class _Widget(Base):

@@ -10,7 +10,6 @@ from collections.abc import Callable
 
 import httpx
 import pytest
-
 from app.providers.google_maps.client import GoogleMapsApiError, GoogleMapsClient
 
 EXAMPLE_CONFIG = {
