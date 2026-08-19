@@ -69,14 +69,13 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T060 --- next up (Phase 6, Worker — first task of that phase).
-(T000-T002, T010, T011, T014, T015, T020-T026 fully complete, T027
-PARTIAL (see database/INDEX_REVIEW.md), T030-T045 and T050-T055
-complete — Phase 4 Provider and Phase 5 Data pipeline both fully done.
-T012/T013 prepared but NOT verified — see below. See the dated
-sections further down for detail; this header is not updated inline
-each time, check docs/17_CURRENT_WORK.md for the authoritative
-up-to-the-minute status.)
+T061 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
+T050-T055, and T060 complete — Phase 4 Provider and Phase 5 Data
+pipeline both fully done, Phase 6 Worker started. T012/T013 prepared
+but NOT verified — see below. See the dated sections further down for
+detail; this header is not updated inline each time, check
+docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1369,6 +1368,74 @@ T054 (persist) → T055 (metrics). Every stage of
 agnostic implementation, composable by whatever orchestrates a real
 collection run — which is Phase 6 (Worker, T060+), not yet started.
 
+## Redis queue (T060) — current task now T061, Phase 6 (Worker) started
+
+`workers/queue.py` extended (not a new file — its own T015 docstring
+said "this is NOT the job queue abstraction, that's T060", so this
+task fills in the same file): `JobQueue` (Protocol, item 1) +
+`RedisJobQueue` (real implementation, item 2). Redis is
+coordination-only (docs/16_MEMORY.md's queue decision) — the ONLY
+payload ever carried is a bare job ID (item 8); every durable job fact
+lives in MySQL (`app.repositories.jobs`), which this module never
+imports.
+
+**Reliable-queue pattern (items 5-6, acknowledgement + worker
+failure)**: `dequeue()` uses `BLMOVE` (Redis's non-deprecated
+successor to `BRPOPLPUSH`) to atomically move a job ID from the main
+queue list into a separate in-flight list, rather than just popping
+it. If the worker that dequeued it crashes before calling
+`acknowledge()`, the job ID sits visibly in the in-flight list
+(`list_in_flight()`) instead of being silently lost. `requeue()` is
+the explicit primitive that moves an abandoned in-flight job back onto
+the main queue — deciding *when* to call it automatically (a stale-
+heartbeat sweep) is T062/T065's job, not built here.
+
+**T013 (Redis) is still not locally available — resolved with
+`fakeredis`, a real decision made and verified before writing any
+code, not assumed**: added `fakeredis>=2.20,<3.0` to the dev extras.
+Sanity-checked directly (`LPUSH`/`BRPOP`/`SET NX EX`/`BLMOVE` all
+behave correctly against a real Redis command implementation, not a
+hand-rolled mock) before committing to it — same
+"real-substitute-system, not a fake" philosophy as SQLite standing in
+for MySQL throughout this whole project. One caveat found and
+accepted, not hidden: `fakeredis`'s blocking commands (`BLMOVE`, etc.)
+return immediately when the source list is empty rather than actually
+waiting out the timeout — fine for this task's tests (which never
+depend on real cross-thread blocking timing), but worth knowing if a
+future test needs to prove genuine blocking behavior.
+
+**Two real mypy findings from redis-py's type stubs, fixed, not
+suppressed blindly**: (1) `blmove`'s `timeout` parameter is typed
+`int` even though the real Redis `BLMOVE` command accepts a
+fractional-second timeout (confirmed directly against `fakeredis`) —
+a `# type: ignore[arg-type]` with an explanatory comment, not a
+signature change that would have broken sub-second test timeouts.
+(2) The sync `redis.Redis` client's methods are typed as returning
+`X | Awaitable[X]` in redis-py's stubs (shared with the async client),
+so `int(result)`/iterating a list result needs an explicit `cast()` to
+the concrete sync-side type — a known, common redis-py mypy
+awkwardness, not a bug in this code.
+
+11 new tests (`tests/unit/test_queue.py`), one section per T060 item,
+against `fakeredis`: enqueue, FIFO dequeue ordering, empty-queue
+`None`, acknowledgement removing from in-flight, a safe-no-op
+double-acknowledge, the "job stays visible in-flight until acked"
+worker-failure proof, requeue redelivering (and not duplicating an
+already-acknowledged job), payload-is-always-a-bare-int, and a
+Redis-total-data-loss test proving nothing MySQL-durable is touched
+(this module simply has no way to reach MySQL, the strongest possible
+version of that proof).
+
+Verified locally: 389 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 source files in
+`apps/api`; 6 source files via the separate `workers/pyproject.toml`
+mypy invocation documented in `workers/README.md`).
+
+**Phase 6 (Worker) has started.** T061+ (job execution, heartbeat,
+recovery, retry) will build the actual worker main-loop that calls
+`RedisJobQueue` + the full Phase 5 pipeline (T050-T055) + the provider
+adapter (T040-T045) together for the first time.
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows
@@ -1381,6 +1448,14 @@ Resume: once the user confirms MySQL is set up, run
 `mysql -u app_user -p google_data_platform -e "SELECT 1;"` to verify
 and mark T012 complete; once Redis is reachable (or the user says
 skip), run `python scripts/redis_ping.py` and mark T013 accordingly.
+
+**T060 added `fakeredis` as a dev-only test substitute** (same role
+SQLite plays for MySQL) so Redis-dependent code (the job queue) could
+be built and genuinely tested without a live Redis — this does NOT
+resolve T013 itself, which is specifically about the real local Redis
+instance being reachable; `fakeredis` only unblocks writing/testing
+code that talks to *a* Redis-compatible server, not verifying the
+actual configured `REDIS_URL` works.
 
 ## FastAPI skeleton (T014)
 

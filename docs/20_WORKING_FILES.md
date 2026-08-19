@@ -7,15 +7,24 @@ being changed.
 
 ## Active task
 
-T060 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
-T012/T013 prepared but blocked on user action). Phase 4 (Provider) and
-Phase 5 (Data pipeline) both fully complete. Phase 6 (Worker) starting.
+T061 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060 complete; T027 PARTIAL — see database/INDEX_REVIEW.md;
+T012/T013 prepared but blocked on user action; T013's local-testing
+gap mitigated via `fakeredis`). Phase 4 (Provider) and Phase 5 (Data
+pipeline) both fully complete. Phase 6 (Worker) in progress.
 
 ## Active files
 
 ``` text
-None yet — T060 has not started.
+None yet — T061 has not started.
+```
+
+## T060 files (complete — for reference)
+
+``` text
+workers/queue.py                (modified — JobQueue/RedisJobQueue added)
+apps/api/pyproject.toml         (modified — fakeredis added to dev extras)
+tests/unit/test_queue.py        (new)
 ```
 
 ## T055 files (complete — for reference)

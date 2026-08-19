@@ -1283,3 +1283,45 @@ T054 (persist) → T055 (metrics) — every stage of
 Next: T060 --- Redis queue (first task of Phase 6, Worker — queue
 interface, Redis implementation, minimal job-ID-only payload, MySQL
 remains the system of record).
+
+### T060 --- Redis queue
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/queue.py` (extended, not new — T015 left it as a
+    placeholder specifically for this): `JobQueue` (Protocol) +
+    `RedisJobQueue` (real implementation). Payload is always a bare
+    job ID (item 8) — job details stay in MySQL (item 9), which this
+    module never imports.
+-   Reliable-queue pattern (items 5-6): `dequeue()` uses `BLMOVE` to
+    atomically move a job ID into an in-flight list rather than
+    discarding it; `acknowledge()` removes it; `requeue()` moves an
+    abandoned in-flight job back to the main queue (the primitive a
+    future recovery sweep, T062/T065, will call).
+-   **Decided and verified a Redis-testing strategy before writing any
+    code**: added `fakeredis` (dev-only) — sanity-checked its real
+    `LPUSH`/`BRPOP`/`SET NX EX`/`BLMOVE` behavior directly first, same
+    "real substitute system" philosophy as SQLite for MySQL throughout
+    this project. One caveat found and documented, not hidden:
+    `fakeredis`'s blocking commands return immediately on an empty
+    source rather than truly waiting out the timeout.
+-   Fixed two real redis-py mypy stub issues with targeted `cast()`/
+    `# type: ignore[arg-type]` (not blanket suppression): `blmove`'s
+    `timeout` stub-typed `int` despite Redis accepting fractional
+    seconds; the sync client's methods typed as `X | Awaitable[X]`.
+-   11 new tests (`tests/unit/test_queue.py`), one section per T060
+    item: enqueue, FIFO ordering, empty-queue `None`, acknowledgement,
+    the worker-failure/in-flight-visibility proof, requeue
+    (+ no-duplicate-on-late-requeue), payload-is-always-a-bare-int,
+    and a Redis-total-data-loss test.
+-   Verified locally: 389 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    6 files via the separate `workers/pyproject.toml` mypy invocation).
+
+**Phase 6 (Worker) has started.**
+
+Next: T061 --- Worker job execution (the first major vertical slice —
+full dequeue-to-acknowledge workflow using the fake provider before
+any real Google call).

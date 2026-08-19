@@ -15,7 +15,7 @@ tests: 0% V1: 0%
   3 Backend            IN_PROGRESS        85%
   4 Provider           COMPLETE          100%
   5 Data pipeline      COMPLETE          100%
-  6 Worker             PENDING             0%
+  6 Worker             IN_PROGRESS        17%
   7 Frontend           PENDING             0%
   8 Operations         PENDING             0%
   9 Quality            PENDING             0%
@@ -23,17 +23,16 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T060 --- Redis queue. (T027 PARTIAL, T012/T013 still open — T013
-directly relevant to T060 now.)
+T061 --- Worker job execution. (T027 PARTIAL, T012 still open; T013
+partly mitigated for testing via `fakeredis`, see docs/16_MEMORY.md.)
 
 ## Last verified milestone
 
-T055 --- Pipeline metrics complete and verified (378 passed, 1 skipped
-as expected), still no live MySQL needed. `compute_job_counters()`
-aggregates validation + persistence outcomes into `JobCounters`
-atomically alongside the records they describe. **Phase 5 (Data
-pipeline) is now fully complete** — T050 through T055. Phase 4
-(Provider) was completed earlier in this same run.
+T060 --- Redis queue complete and verified (389 passed, 1 skipped as
+expected), still no live MySQL/Redis needed (`fakeredis` substitutes).
+Reliable-queue pattern (`BLMOVE` + in-flight list) in
+`workers/queue.py`. **Phase 6 (Worker) now started** — Phase 4
+(Provider) and Phase 5 (Data pipeline) both fully complete before it.
 
 ## Rule
 

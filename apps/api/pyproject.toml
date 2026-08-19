@@ -27,6 +27,7 @@ dev = [
   "ruff>=0.6,<1.0",
   "mypy>=1.11,<2.0",
   "types-PyMySQL>=1.1,<2.0",
+  "fakeredis>=2.20,<3.0",
 ]
 
 [tool.setuptools.packages.find]

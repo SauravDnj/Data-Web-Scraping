@@ -110,7 +110,10 @@
         `compute_job_counters()`, new `JobRepository.
         update_counters()`, atomic with record writes — see
         docs/16_MEMORY.md). **Phase 5 (Data pipeline) fully complete.**
--   [ ] T060--T065 worker
+-   [x] T060 Redis queue (`workers/queue.py` — `JobQueue`/
+        `RedisJobQueue`, BLMOVE reliable-queue pattern, `fakeredis`
+        adopted as a real testing substitute — see docs/16_MEMORY.md)
+-   [ ] T061--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality
