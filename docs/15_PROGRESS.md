@@ -12,7 +12,7 @@ tests: 0% V1: 0%
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
-  3 Backend            IN_PROGRESS        40%
+  3 Backend            IN_PROGRESS        50%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
@@ -23,12 +23,12 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T034 --- Configuration service. (T027 PARTIAL, T012/T013 still open.)
+T035 --- Job service. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T033 --- Project service complete and verified (125 passed, 1 skipped
-as expected), still no live MySQL needed.
+T034 --- Configuration service complete and verified (134 passed, 1
+skipped as expected), still no live MySQL needed.
 
 ## Rule
 

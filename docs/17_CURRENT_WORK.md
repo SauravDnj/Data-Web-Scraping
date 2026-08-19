@@ -2,18 +2,19 @@
 
 ## Active task
 
-T034 --- Configuration service.
+T035 --- Job service.
 
 ## Previous task
 
-T033 --- Project service. COMPLETE — 13 new tests, still no live
-MySQL needed. `ensure_can_start_job()` guard added for T035 to use.
+T034 --- Configuration service. COMPLETE — 11 new tests, still no
+live MySQL needed. Resolved a circular task-graph dependency on T040.
 See `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement versioned provider configuration and its validation
-workflow, on `app.repositories.configs.CollectionConfigRepository`.
+Implement job creation and lifecycle commands, using
+`ProjectService.ensure_can_start_job` and
+`app.domain.job_state_machine` (T031) for transitions.
 
 ## Still open
 

@@ -563,3 +563,26 @@ Evidence:
 
 Next: T034 --- Configuration service (versioned provider config +
 validation workflow).
+
+### T034 --- Configuration service
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/provider_validation.py` (`ConfigValidationResult`,
+    `ProviderConfigValidator` Protocol) resolves T034's circular
+    dependency on T040.
+-   `app/services/configs.py` (`ConfigurationService`): deterministic
+    version numbering, validation strictly before any row is created,
+    new `CollectionConfigRepository.set_active_version()` as the only
+    post-creation mutation (`is_active` pointer only).
+-   Test-only fakes in `tests/unit/fakes.py`.
+-   11 new tests: versioning, single-active-version invariant,
+    unmutated historical content, invalid-config rejection (generic +
+    delegated), `activate_version`, cross-user denial.
+-   Verified locally: 134 passed, 1 skipped (T012-gated), ruff clean,
+    mypy clean (47 source files).
+
+Next: T035 --- Job service (job creation/lifecycle commands, will use
+`ProjectService.ensure_can_start_job`).
