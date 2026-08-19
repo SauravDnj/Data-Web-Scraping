@@ -2,23 +2,28 @@
 
 ## Active task
 
-Paused, awaiting user input. T027 is PARTIAL (see
-`database/INDEX_REVIEW.md`) — genuinely blocked on real MySQL for
-EXPLAIN verification, confirmed by reading its literal prompt (not a
-false alarm like T023/T025/T026 turned out to be).
+T031 --- Job state machine.
 
 ## Previous task
 
-T026 --- Operations database. COMPLETE. All 8 database-schema tasks
-(T020-T026) are now done. See `docs/18_COMPLETED_WORK.md`.
+T030 --- Domain models. COMPLETE — pure Python, 17 new tests, no DB
+touched. Centralized status enums into `app/domain/`, ORM files now
+import rather than redefine them. See `docs/18_COMPLETED_WORK.md`.
 
-## Why paused here specifically
+## Goal
 
-This is the first task in the whole run (T000-T026) whose acceptance
-criteria cannot be honestly satisfied without live MySQL. Every prior
-"might need real MySQL" flag (T023, T025, T026) turned out to be
-overcautious once the literal prompt was checked — T027 is different,
-it explicitly says "Use EXPLAIN on representative synthetic queries."
+Implement explicit legal job state transitions using
+`app.domain.jobs.JobStatus`. Should be pure-Python testable, same as
+T030 — a state machine is business logic, not persistence.
+
+## Still open
+
+T027 (index review) remains PARTIAL, genuinely blocked on real MySQL
+for EXPLAIN verification — see `database/INDEX_REVIEW.md`. T012/T013
+still not resolved by the user. Continuing into T031+ where honestly
+possible without live infra, per the user's "continue" instruction,
+but T032 (repository layer) and beyond will need real MySQL to
+properly integration-test rather than just unit-test.
 
 ## Not yet in scope
 
@@ -29,11 +34,8 @@ it explicitly says "Use EXPLAIN on representative synthetic queries."
 
 ## Handoff
 
-Resume T027's EXPLAIN step once T012 is done. T030 (domain models) is
-pure Python and doesn't need MySQL, so it COULD proceed first if the
-user prefers not to wait — but T031+ (repository layer, services)
-increasingly benefit from real integration testing, so raising this
-with the user before choosing a direction.
+After T031: T032 (repository layer — likely wants real MySQL for
+integration tests, unit tests alone may not fully satisfy it) → T033+.
 
 ## Open blockers (user action needed)
 

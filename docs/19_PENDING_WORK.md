@@ -36,7 +36,9 @@
         mapping/FK review/uniqueness review done (see
         database/INDEX_REVIEW.md). EXPLAIN verification against real
         MySQL not done — genuinely blocked on T012.
--   [ ] T030--T039 backend
+-   [x] T030 Domain models (pure Python, centralized status enums —
+        see docs/16_MEMORY.md)
+-   [ ] T031--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

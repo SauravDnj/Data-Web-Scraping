@@ -4,13 +4,9 @@ from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, BigIntegerPK
+from app.domain.projects import ProjectStatus
 
-
-class ProjectStatus:
-    ACTIVE = "active"
-    ARCHIVED = "archived"
-
-    ALL = frozenset({ACTIVE, ARCHIVED})
+__all__ = ["Project", "ProjectStatus"]
 
 
 def _utc_now() -> datetime:

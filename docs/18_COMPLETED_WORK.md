@@ -449,3 +449,32 @@ This is the real stopping point for the SQLite-substitution approach
 this project has used successfully through T020-T026 (2 real bugs
 found and fixed, 1 real test-coverage gap found and fixed). All 8
 schema tables exist; what remains needs live MySQL.
+
+### T030 --- Domain models
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/{projects,jobs,records,exports,schedules}.py`: frozen
+    dataclasses + `StrEnum` status values for every entity T030 names
+    (Project, CollectionConfig, Job, JobRun, Record, Export, Schedule)
+    — pure Python, no SQLAlchemy, no HTTP.
+-   Status enums genuinely centralized: moved out of
+    `app/db/models/{project,job,export}.py` into `app/domain/`, with
+    the ORM files now importing (not redefining) them — verified by
+    an identity-check test (`app.db.models.JobStatus is
+    app.domain.jobs.JobStatus`).
+-   Validation in `__post_init__` for each entity where meaningful
+    (non-empty name/canonical_key, version >= 1, non-negative
+    counters, attempt >= 1). `config`/`data`/`metrics` stay opaque
+    dicts — no provider-specific fields modeled in generic domain
+    objects.
+-   17 new tests, all pure Python — zero DB/SQLite touched, proving
+    domain logic really is unit-testable without MySQL (the literal
+    T030 acceptance criterion).
+-   Verified locally: 69 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (31 source files).
+
+Next: T031 --- Job state machine (also pure-Python-testable in
+principle, per its own dependencies: T030, T024).

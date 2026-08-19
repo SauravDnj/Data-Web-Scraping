@@ -5,15 +5,9 @@ from sqlalchemy import JSON, DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, BigIntegerPK
+from app.domain.exports import ExportStatus
 
-
-class ExportStatus:
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-    ALL = frozenset({PENDING, RUNNING, COMPLETED, FAILED})
+__all__ = ["Export", "ExportStatus"]
 
 
 def _utc_now() -> datetime:

@@ -12,7 +12,7 @@ tests: 0% V1: 0%
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
   2 Database           IN_PROGRESS        90%
-  3 Backend            PENDING             0%
+  3 Backend            IN_PROGRESS        10%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
   6 Worker             PENDING             0%
@@ -23,14 +23,13 @@ tests: 0% V1: 0%
 
 ## Current task
 
-Paused, awaiting user input on T012/T013. T027 PARTIAL (blocked on
-real MySQL for EXPLAIN verification — see database/INDEX_REVIEW.md).
+T031 --- Job state machine. (T027 PARTIAL, T012/T013 still open.)
 
 ## Last verified milestone
 
-T026 --- Operations database complete and verified (53 passed, 1
-skipped as expected) without live MySQL. All 8 database-schema tasks
-(T020-T026) now done.
+T030 --- Domain models complete and verified (69 passed, 1 skipped as
+expected), fully pure-Python — no database touched. Status enums
+genuinely centralized in app/domain/, not just duplicated.
 
 ## Rule
 

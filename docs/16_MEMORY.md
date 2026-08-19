@@ -88,6 +88,43 @@ state machine / T032 repository layer / T033+ will increasingly want
 real integration testing) benefits from T012 being resolved. Check
 back with the user before continuing further into T030+.
 
+## Domain models (T030) — current task now T031
+
+`app/domain/{projects,jobs,records,exports,schedules}.py`: frozen
+dataclasses (`Project`, `CollectionConfig`, `Job`, `JobCounters`,
+`JobRun`, `Record`, `RecordProvenance`, `Export`, `Schedule`) plus
+`StrEnum`-based status enums (`ProjectStatus`, `JobStatus`,
+`JobRunStatus`, `ExportStatus`). No SQLAlchemy, no HTTP — pure Python,
+importable and testable without any DB.
+
+**Centralized status values for real, not just re-implemented in a
+new location**: moved `ProjectStatus`/`JobStatus`/`JobRunStatus`/
+`ExportStatus` OUT of `app/db/models/{project,job,export}.py` (where
+T022-T026 originally defined them) and INTO `app/domain/`; the
+SQLAlchemy model files now `from app.domain.X import YStatus` and
+re-export via `__all__` rather than redefining — `app.db.models.
+JobStatus is app.domain.jobs.JobStatus` (same object), verified by an
+identity-check test. This fixes the dependency direction retroactively
+to match `docs/02_SYSTEM_ARCHITECTURE_DEEP.md` (domain is the inner
+layer; persistence depends on it, not the reverse). `UserStatus` and
+`AuditLog` were deliberately left alone — out of T030's literal scope
+(no "Define User" in the prompt).
+
+Validation lives in `__post_init__` (project name non-empty, config
+version >= 1, job counters non-negative, job_run attempt >= 1, record
+canonical_key non-empty) — this is where "value objects... where
+useful" landed. `CollectionConfig.config` / `Record.data` /
+`JobRun.metrics` stay opaque `dict[str, Any]` — no provider-specific
+fields modeled here, per T030's explicit instruction.
+
+17 new tests, all pure Python (no `sqlite_engine` fixture, no DB
+touched at all) — validation rejection cases, sensible defaults,
+immutability (`frozen=True` → `AttributeError` on mutation), and the
+status-enum-identity proof.
+
+Verified locally: 69 passed, 1 skipped (T012-gated), ruff clean across
+all three Python trees, mypy clean (31 source files now, up from 25).
+
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
 Not marked complete. MySQL 9.7 is installed and running as a Windows

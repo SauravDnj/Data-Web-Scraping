@@ -5,46 +5,9 @@ from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, BigIntegerPK
+from app.domain.jobs import JobRunStatus, JobStatus
 
-
-class JobStatus:
-    """Canonical job states, resolved at T000 (see docs/16_MEMORY.md):
-    draft -> queued -> running -> {completed, partially_completed,
-    failed, cancelled, paused}, with paused re-entrant to running."""
-
-    DRAFT = "draft"
-    QUEUED = "queued"
-    RUNNING = "running"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    PARTIALLY_COMPLETED = "partially_completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-    ALL = frozenset(
-        {
-            DRAFT,
-            QUEUED,
-            RUNNING,
-            PAUSED,
-            COMPLETED,
-            PARTIALLY_COMPLETED,
-            FAILED,
-            CANCELLED,
-        }
-    )
-
-
-class JobRunStatus:
-    """A single execution attempt's status — narrower than JobStatus
-    since a run doesn't have draft/queued/paused states."""
-
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-    ALL = frozenset({RUNNING, COMPLETED, FAILED, CANCELLED})
+__all__ = ["Job", "JobRun", "JobStatus", "JobRunStatus"]
 
 
 def _utc_now() -> datetime:
