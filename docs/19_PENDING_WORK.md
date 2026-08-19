@@ -28,8 +28,9 @@
 -   [x] T023 Project database (found/fixed SQLite FK-enforcement gap
         too; sqlite_engine fixture centralized in tests/unit/conftest.py)
 -   [x] T024 Job database (done without live MySQL, same pattern)
--   [ ] T025--T027 database (records/dedup — likely needs real MySQL;
-        ops tables; index review with real query plans)
+-   [x] T025 Record database (done without live MySQL; found tests/
+        had never been linted — fixed 17 issues + extended CI)
+-   [ ] T026--T027 ops tables; index review with real query plans
 -   [ ] T030--T039 backend
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline

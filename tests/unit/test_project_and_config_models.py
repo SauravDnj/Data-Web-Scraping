@@ -44,11 +44,8 @@ def test_project_belongs_to_user(sqlite_engine):
 def test_project_requires_an_existing_user(sqlite_engine):
     factory = build_session_factory(sqlite_engine)
 
-    with pytest.raises(IntegrityError):
-        with session_scope(factory) as session:
-            session.add(
-                Project(user_id=999_999, name="Orphan", source_type="google_maps")
-            )
+    with pytest.raises(IntegrityError), session_scope(factory) as session:
+        session.add(Project(user_id=999_999, name="Orphan", source_type="google_maps"))
 
 
 def test_collection_config_belongs_to_project(sqlite_engine):
@@ -167,11 +164,10 @@ def test_no_active_version_is_a_clear_empty_result_not_an_error(sqlite_engine):
         )
         project_id = project.id
 
-    with session_scope(factory) as session:
-        with pytest.raises(NoResultFound):
-            session.query(CollectionConfig).filter_by(
-                project_id=project_id, is_active=True
-            ).one()
+    with session_scope(factory) as session, pytest.raises(NoResultFound):
+        session.query(CollectionConfig).filter_by(
+            project_id=project_id, is_active=True
+        ).one()
 
 
 def test_duplicate_version_number_within_project_is_rejected(sqlite_engine):
@@ -191,14 +187,13 @@ def test_duplicate_version_number_within_project_is_rejected(sqlite_engine):
         )
         project_id = project.id
 
-    with pytest.raises(IntegrityError):
-        with session_scope(factory) as session:
-            session.add(
-                CollectionConfig(
-                    project_id=project_id,
-                    provider="google_maps",
-                    config_json={"different": "content"},
-                    version=1,
-                    is_active=True,
-                )
+    with pytest.raises(IntegrityError), session_scope(factory) as session:
+        session.add(
+            CollectionConfig(
+                project_id=project_id,
+                provider="google_maps",
+                config_json={"different": "content"},
+                version=1,
+                is_active=True,
             )
+        )

@@ -35,11 +35,10 @@ def test_temporary_schema_can_be_created_and_used(sqlite_engine):
 def test_session_rolls_back_on_error(sqlite_engine):
     factory = build_session_factory(sqlite_engine)
 
-    with pytest.raises(RuntimeError):
-        with session_scope(factory) as session:
-            session.add(_Widget(name="beta"))
-            session.flush()  # write is visible within the transaction...
-            raise RuntimeError("simulated failure after a write")
+    with pytest.raises(RuntimeError), session_scope(factory) as session:
+        session.add(_Widget(name="beta"))
+        session.flush()  # write is visible within the transaction...
+        raise RuntimeError("simulated failure after a write")
 
     with session_scope(factory) as session:
         # ...but never committed, because session_scope rolled back.

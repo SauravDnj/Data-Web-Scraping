@@ -11,7 +11,7 @@ tests: 0% V1: 0%
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
   1 Local foundation   IN_PROGRESS        85%
-  2 Database           IN_PROGRESS        55%
+  2 Database           IN_PROGRESS        65%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
   5 Data pipeline      PENDING             0%
@@ -23,14 +23,13 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T025 --- Record database. (T012/T013 open, blocked on user action.
-This task is flagged as the likely real stopping point for the
-SQLite-substitution approach — see docs/16_MEMORY.md.)
+T026 --- Operations database. (T012/T013 open, blocked on user action.)
 
 ## Last verified milestone
 
-T024 --- Job database complete and verified (40 passed, 1 skipped as
-expected) without live MySQL.
+T025 --- Record database complete and verified (47 passed, 1 skipped
+as expected) without live MySQL. Also fixed a real gap: tests/ had
+never been linted (17 issues), CI extended to cover it.
 
 ## Rule
 

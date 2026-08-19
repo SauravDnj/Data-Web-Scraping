@@ -2,31 +2,23 @@
 
 ## Active task
 
-T025 --- Record database.
+T026 --- Operations database.
 
 ## Previous task
 
-T024 --- Job database. COMPLETE, done without live MySQL. See
+T025 --- Record database. COMPLETE, done without live MySQL (the
+earlier "might need real MySQL" flag turned out overcautious — always
+check the literal acceptance criteria). Also fixed a real gap: `tests/`
+had never been linted; 17 issues fixed, CI extended. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Create `records` and `record_provenance` tables + migration, with
-deterministic canonical-key deduplication support, per
-`docs/04_DATABASE_DESIGN.md`.
-
-## Read T025's exact prompt before assuming the usual pattern applies
-
-Two real cross-dialect bugs were found in T022/T023 by testing against
-SQLite instead of skipping verification — that pattern has held up
-through T024. But `canonical_key` uniqueness-at-project-scope and
-dedup behavior are the kind of thing worth confirming against real
-MySQL specifically. Check T025's literal acceptance criteria first;
-don't assume the SQLite shortcut still applies without checking.
+Create `exports`, `schedules`, and `audit_logs` tables + migration,
+per `docs/04_DATABASE_DESIGN.md`.
 
 ## Not yet in scope
 
--   ops tables (T026: exports/schedules/audit_logs);
 -   Google provider calls;
 -   scraping;
 -   real queue consumption logic (T060/T061);
@@ -34,10 +26,10 @@ don't assume the SQLite shortcut still applies without checking.
 
 ## Handoff
 
-After T025: T026 (ops DB) → T027 (indexes/constraints review, needs
-real query plans) → T030 (domain models). Return to T012/T013 as soon
-as possible — T027 in particular cannot be honestly done without real
-MySQL.
+After T026: T027 (indexes/constraints review — needs real query
+plans, likely the actual hard stop for the SQLite-substitution
+pattern) → T030 (domain models). Return to T012/T013 as soon as
+possible.
 
 ## Open blockers (user action needed)
 

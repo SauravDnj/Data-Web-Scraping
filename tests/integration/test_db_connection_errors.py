@@ -16,9 +16,8 @@ def test_unreachable_database_raises_a_clear_operational_error():
     engine = build_engine(UNREACHABLE_DATABASE_URL, pool_pre_ping=False)
     factory = build_session_factory(engine)
 
-    with pytest.raises(OperationalError) as excinfo:
-        with session_scope(factory) as session:
-            session.execute(text("SELECT 1"))
+    with pytest.raises(OperationalError) as excinfo, session_scope(factory) as session:
+        session.execute(text("SELECT 1"))
 
     # The error should be a real, readable message — not a bare/opaque
     # exception, and it must not contain a password.

@@ -11,7 +11,9 @@ from app.db.models import User, UserStatus
 from app.db.session import build_session_factory, session_scope
 
 
-def _make_user(email: str, plain_password: str = "correct horse battery staple") -> User:
+def _make_user(
+    email: str, plain_password: str = "correct horse battery staple"
+) -> User:
     return User(
         email=normalize_email(email),
         name="Test User",
@@ -39,10 +41,9 @@ def test_duplicate_normalized_email_is_rejected(sqlite_engine):
     with session_scope(factory) as session:
         session.add(_make_user("dup@example.com"))
 
-    with pytest.raises(IntegrityError):
-        with session_scope(factory) as session:
-            # Different casing/whitespace, but the same normalized email.
-            session.add(_make_user("  Dup@Example.com  "))
+    with pytest.raises(IntegrityError), session_scope(factory) as session:
+        # Different casing/whitespace, but the same normalized email.
+        session.add(_make_user("  Dup@Example.com  "))
 
 
 def test_password_hash_is_never_plaintext():

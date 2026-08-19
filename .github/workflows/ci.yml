@@ -44,12 +44,15 @@ jobs:
       - name: Ruff format check
         if: steps.backend.outputs.exists == 'true'
         working-directory: apps/api
-        run: ruff format --check .
+        # Includes ../../tests and ../../workers — they run inside
+        # this same environment (see docs/16_MEMORY.md) and were
+        # missed here from T002 until T025 caught it.
+        run: ruff format --check . ../../tests ../../workers
 
       - name: Ruff lint
         if: steps.backend.outputs.exists == 'true'
         working-directory: apps/api
-        run: ruff check .
+        run: ruff check . ../../tests ../../workers
 
       - name: mypy
         if: steps.backend.outputs.exists == 'true'

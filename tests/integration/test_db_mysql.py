@@ -30,7 +30,8 @@ DATABASE_URL = os.environ.get(
 
 pytestmark = pytest.mark.skipif(
     not _mysql_reachable(DATABASE_URL),
-    reason="MySQL/app_user not reachable yet (T012 not complete) — see docs/16_MEMORY.md",
+    reason="MySQL/app_user not reachable yet (T012 not complete) — "
+    "see docs/16_MEMORY.md",
 )
 
 

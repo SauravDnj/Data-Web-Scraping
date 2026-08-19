@@ -60,17 +60,15 @@ def test_users_table_is_created_and_removed_by_migration(tmp_path):
     command.upgrade(config, "head")
     assert "users" in _table_names(db_path)
 
+    insert_sql = (
+        "INSERT INTO users (email, password_hash, status, created_at, updated_at) "
+        "VALUES (?, ?, 'pending', '2026-01-01', '2026-01-01')"
+    )
     connection = sqlite3.connect(db_path)
     try:
-        connection.execute(
-            "INSERT INTO users (email, password_hash, status, created_at, updated_at) "
-            "VALUES ('a@example.com', 'hash', 'pending', '2026-01-01', '2026-01-01')"
-        )
+        connection.execute(insert_sql, ("a@example.com", "hash"))
         with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(
-                "INSERT INTO users (email, password_hash, status, created_at, updated_at) "
-                "VALUES ('a@example.com', 'hash2', 'pending', '2026-01-01', '2026-01-01')"
-            )
+            connection.execute(insert_sql, ("a@example.com", "hash2"))
     finally:
         connection.close()
 
@@ -107,3 +105,16 @@ def test_job_tables_are_created_and_removed_by_migration(tmp_path):
 
     command.downgrade(config, "base")
     assert {"jobs", "job_runs"}.isdisjoint(_table_names(db_path))
+
+
+def test_record_tables_are_created_and_removed_by_migration(tmp_path):
+    """T025: same pattern as T022-T024."""
+    db_path = tmp_path / "records_migration_smoke.db"
+    config = Config(str(ALEMBIC_INI))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
+
+    command.upgrade(config, "head")
+    assert {"records", "record_provenance"} <= _table_names(db_path)
+
+    command.downgrade(config, "base")
+    assert {"records", "record_provenance"}.isdisjoint(_table_names(db_path))

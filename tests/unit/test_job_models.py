@@ -68,9 +68,8 @@ def test_job_requires_existing_project_and_config(sqlite_engine):
         _project, config_v1, _config_v2 = _make_user_project_configs(session)
         config_id = config_v1.id
 
-    with pytest.raises(IntegrityError):
-        with session_scope(factory) as session:
-            session.add(Job(project_id=999_999, config_id=config_id))
+    with pytest.raises(IntegrityError), session_scope(factory) as session:
+        session.add(Job(project_id=999_999, config_id=config_id))
 
 
 def test_job_counters_have_safe_defaults(sqlite_engine):
@@ -150,9 +149,8 @@ def test_job_run_records_an_execution_attempt(sqlite_engine):
 def test_job_run_requires_existing_job(sqlite_engine):
     factory = build_session_factory(sqlite_engine)
 
-    with pytest.raises(IntegrityError):
-        with session_scope(factory) as session:
-            session.add(JobRun(job_id=999_999, worker_id="worker-1"))
+    with pytest.raises(IntegrityError), session_scope(factory) as session:
+        session.add(JobRun(job_id=999_999, worker_id="worker-1"))
 
 
 def test_second_attempt_gets_its_own_job_run_row(sqlite_engine):
