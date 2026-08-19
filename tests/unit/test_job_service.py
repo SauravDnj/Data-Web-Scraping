@@ -236,3 +236,25 @@ def test_stranger_cannot_act_on_another_users_job(session_factory):
             jobs.get_job(job.id, requesting_user_id=stranger.id)
         with pytest.raises(PermissionDeniedError):
             jobs.cancel_job(job.id, requesting_user_id=stranger.id)
+        with pytest.raises(PermissionDeniedError):
+            jobs.pause_job(job.id, requesting_user_id=stranger.id)
+        with pytest.raises(PermissionDeniedError):
+            jobs.resume_job(job.id, requesting_user_id=stranger.id)
+        with pytest.raises(PermissionDeniedError):
+            jobs.retry_job(job.id, requesting_user_id=stranger.id)
+
+
+def test_stranger_cannot_create_a_job_by_supplying_someone_elses_project_id(
+    session_factory,
+):
+    """T039 acceptance criterion, verbatim: a user must not be able to
+    reach another user's project by changing an ID in the request —
+    here, the project_id passed to create_job."""
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        projects, configs, jobs = _make_services(session)
+        project = _make_project_with_active_config(projects, configs, owner.id)
+
+        with pytest.raises(PermissionDeniedError):
+            jobs.create_job(project.id, requesting_user_id=stranger.id)

@@ -115,6 +115,22 @@ def test_stranger_cannot_update_another_users_project(session_factory):
             )
 
 
+def test_stranger_cannot_archive_another_users_project(session_factory):
+    """T039: ownership must be enforced on every mutation, not just
+    reads/updates — archiving was the one project mutation without its
+    own cross-user regression test."""
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        service = _make_service(session)
+        project = service.create_project(
+            user_id=owner.id, name="My Project", source_type="google_maps"
+        )
+
+        with pytest.raises(PermissionDeniedError):
+            service.archive_project(project.id, requesting_user_id=stranger.id)
+
+
 def test_archive_project_sets_status_and_records_audit_event(session_factory):
     with session_scope(session_factory) as session:
         user = make_user(session)

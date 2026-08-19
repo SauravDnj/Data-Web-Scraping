@@ -2,21 +2,33 @@
 
 ## Active task
 
-T038 --- Authentication.
+T040 --- Provider interface.
 
 ## Previous task
 
-T037 --- Audit service. COMPLETE — 12 new tests, still no live MySQL
-needed. Centralized action names + secret redaction; found
-`ConfigurationService` had no audit calls at all and added them. See
+T039 --- Authorization. COMPLETE — confirmed ownership was already
+correctly enforced across Project/Config/Job/Record services
+(T033-T036); added the centralized HTTP error mapping
+(`app/api/service_errors.py`, so `PermissionDeniedError`/
+`NotFoundError`/`InvalidStateError` reach clients as 403/404/409
+without every future route needing to catch them by hand) and 6
+previously-missing negative cross-user tests. Full review in
+`database/AUTHORIZATION_REVIEW.md`. T038 --- Authentication also
+COMPLETE before it — password login + opaque server-side session
+tokens, account lockout, `/api/v1/auth/{login,logout,me}`. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement secure V1 authentication (read `docs/T038_PROMPT.md` before
-assuming scope). Likely the real next hard stop: password/session/
-token handling benefits strongly from real integration tests, unlike
-the business-logic services (T033-T037) that held up fine on SQLite.
+Define the generic `ProviderAdapter` contract (read `docs/T040_PROMPT.md`
+before assuming scope) — the boundary the rest of the application
+depends on without knowing Google SDK details. Resolves the interim
+`app.domain.provider_validation.ProviderConfigValidator` Protocol T034
+created explicitly to be reconciled here (see its docstring and
+`docs/16_MEMORY.md`'s T034 section) — do not silently diverge from it,
+reconcile or replace it deliberately. Pure Python, no Google SDK calls,
+no browser automation — should hold up fine on the SQLite-substitution
+approach same as T030-T039.
 
 ## Not yet in scope
 

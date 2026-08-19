@@ -224,3 +224,26 @@ def test_stranger_cannot_create_or_view_configuration(session_factory):
 
         with pytest.raises(PermissionDeniedError):
             configs.get_active(project.id, requesting_user_id=stranger.id)
+
+
+def test_stranger_cannot_activate_version_or_list_versions(session_factory):
+    """T039: activate_version and list_versions weren't covered by the
+    T034 cross-user test — every read/write path must independently
+    enforce ownership, not just the two checked there."""
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        projects, configs = _make_services(session)
+        project = projects.create_project(
+            user_id=owner.id, name="My Project", source_type="google_maps"
+        )
+        version = configs.create_version(
+            project.id, requesting_user_id=owner.id, provider="google_maps", config={}
+        )
+
+        with pytest.raises(PermissionDeniedError):
+            configs.activate_version(
+                project.id, version.id, requesting_user_id=stranger.id
+            )
+        with pytest.raises(PermissionDeniedError):
+            configs.list_versions(project.id, requesting_user_id=stranger.id)

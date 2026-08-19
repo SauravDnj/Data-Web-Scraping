@@ -54,7 +54,14 @@
 -   [x] T037 Audit service (centralized action names + secret
         redaction; added missing config audit calls; refactored
         Project/JobService to use it)
--   [ ] T038--T039 backend
+-   [x] T038 Authentication (password login + opaque session tokens,
+        lockout, `/api/v1/auth/{login,logout,me}`; found/fixed a real
+        naive/aware datetime comparison bug and a real pre-existing
+        migration-test bug — see docs/16_MEMORY.md)
+-   [x] T039 Authorization (confirmed ownership already correctly
+        enforced across T033-T036's services; added centralized HTTP
+        error mapping + 6 missing negative cross-user tests — see
+        database/AUTHORIZATION_REVIEW.md)
 -   [ ] T040--T045 provider
 -   [ ] T050--T055 pipeline
 -   [ ] T060--T065 worker

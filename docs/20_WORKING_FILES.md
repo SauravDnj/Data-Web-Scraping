@@ -7,14 +7,50 @@ being changed.
 
 ## Active task
 
-T038 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T037
+T040 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T039
 complete; T027 PARTIAL — see database/INDEX_REVIEW.md; T012/T013
 prepared but blocked on user action).
 
 ## Active files
 
 ``` text
-None yet — T038 has not started.
+None yet — T040 has not started.
+```
+
+## T039 files (complete — for reference)
+
+``` text
+apps/api/app/api/service_errors.py                (new)
+apps/api/app/main.py                               (modified)
+database/AUTHORIZATION_REVIEW.md                   (new)
+tests/integration/test_service_error_handlers.py   (new)
+tests/unit/test_project_service.py                 (modified)
+tests/unit/test_configuration_service.py           (modified)
+tests/unit/test_job_service.py                     (modified)
+```
+
+## T038 files (complete — for reference)
+
+``` text
+apps/api/app/domain/users.py                       (new)
+apps/api/app/domain/auth.py                        (new)
+apps/api/app/db/models/session.py                  (new)
+apps/api/app/db/models/user.py                     (modified)
+apps/api/app/db/models/__init__.py                 (modified)
+apps/api/app/repositories/users.py                 (new)
+apps/api/app/repositories/sessions.py              (new)
+apps/api/app/services/auth.py                      (new)
+apps/api/app/api/envelope.py                       (new)
+apps/api/app/api/dependencies.py                   (new)
+apps/api/app/api/v1/auth.py                        (new)
+apps/api/app/api/v1/__init__.py                    (modified)
+database/migrations/versions/9e753afdce70_...py     (new)
+tests/conftest.py                                   (new)
+tests/unit/conftest.py                              (modified — pointer only)
+tests/unit/test_auth_service.py                     (new)
+tests/integration/test_auth_api.py                  (new)
+tests/integration/test_migrations.py                (modified — fixed a
+    real pre-existing bug in the T035 migration round-trip test)
 ```
 
 ## Rule

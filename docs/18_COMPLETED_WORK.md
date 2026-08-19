@@ -664,3 +664,98 @@ Evidence:
 Next: T038 --- Authentication (secure V1 auth — likely the actual next
 hard stop for the SQLite-substitution approach; session/token handling
 benefits strongly from real integration tests).
+
+### T038 --- Authentication
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/domain/users.py` (`UserStatus`, `User`), `app/domain/auth.py`
+    (`AuthSession`, `IssuedSession`, `as_naive_utc`),
+    `app/db/models/session.py` (`Session` table), migration
+    `9e753afdce70_...` (sessions table + `users.failed_login_attempts`/
+    `locked_until`, with `server_default='0'` added by hand after
+    autogenerate omitted it).
+-   `app/repositories/{users,sessions}.py`, `app/services/auth.py`
+    (`AuthService`: password login via bcrypt (T022), opaque
+    `secrets.token_urlsafe(32)` session tokens stored SHA-256-hashed,
+    12-hour session lifetime, lockout after 5 failed attempts for 15
+    minutes, same error message for wrong-password/unknown-email — no
+    enumeration, no self-registration in V1).
+-   `app/api/envelope.py`, `app/api/dependencies.py`,
+    `app/api/v1/auth.py` — first real `/api/v1` business routes
+    (`POST /auth/login`, `POST /auth/logout`, `GET /auth/me`),
+    establishing the `{"data": ..., "request_id": ...}` envelope every
+    future route should reuse.
+-   **Found and fixed a real cross-dialect bug** (MySQL too, not just
+    SQLite): `DATETIME` columns drop timezone-awareness on read-back,
+    but a freshly-created ORM object may still hold Python's original
+    aware `datetime`, causing an intermittent
+    `TypeError: can't compare offset-naive and offset-aware datetimes`.
+    Fixed with `as_naive_utc()`, applied to both sides of every
+    comparison. See `docs/16_MEMORY.md` for full detail.
+-   **Found and fixed a real, pre-existing test bug** while running the
+    full suite for the first time since T035: the migration round-trip
+    test used a relative `downgrade(config, "-1")`, which implicitly
+    assumed the idempotency-key migration was still `head` — T038's
+    new migration broke that assumption. Fixed by targeting the exact
+    parent revision by name instead.
+-   15 new tests: login success/failure/lockout/counter-reset, expired
+    session (via a forged, hashed, DB-persisted token — proves the
+    real lookup path, not just the dataclass property), logout
+    revocation + idempotency, disabled account, unknown/garbage token,
+    plus full HTTP-layer coverage of all 3 routes.
+-   Verified locally: 179 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (63 source files).
+
+Next: T039 --- Authorization (project-level access, resource
+isolation — depends on T038/T033/T035/T036, all already complete).
+
+### T039 --- Authorization
+
+Status: COMPLETE
+
+Evidence:
+
+-   Full review in `database/AUTHORIZATION_REVIEW.md` (same convention
+    as T027's `database/INDEX_REVIEW.md`). Verified the ownership
+    policy (a resource is authorized via its parent project's
+    `user_id`, checked once in `ProjectService._require_owner` and
+    reused everywhere via `ProjectService.get_project`/
+    `ensure_can_start_job`) was already correctly enforced by every
+    service that exists (`ProjectService`, `ConfigurationService`,
+    `JobService`, `RecordService` — all built at T033-T036) — no
+    service code needed to change.
+-   **Closed a real gap**: no route ever mapped
+    `PermissionDeniedError`/`NotFoundError`/`InvalidStateError` to an
+    HTTP status except T038's `auth.py`, done by hand for one case.
+    Added `app/api/service_errors.py`
+    (`register_service_error_handlers`): 403/404/409 respectively,
+    registered in `app/main.py`. Without this, every T070+
+    project-scoped route would have needed to catch these individually
+    or leak them as 500s.
+-   **Closed a real coverage gap**: added 6 previously-missing negative
+    (cross-user) tests for methods that already enforced ownership
+    correctly but had no regression test proving it —
+    `ProjectService.archive_project`, `ConfigurationService.
+    activate_version`/`list_versions`, `JobService.pause_job`/
+    `resume_job`/`retry_job`, and `JobService.create_job` (the literal
+    T039 acceptance criterion: a stranger supplying someone else's
+    `project_id`).
+-   **Documented, not built speculatively**: `ExportService`/
+    `ScheduleService` don't exist yet (only domain/repository layers)
+    — authorization enforcement for them is now a recorded, binding
+    obligation on T080/T083 rather than invented ahead of those
+    services' real method signatures. No project-scoped HTTP endpoint
+    exists yet either (only T038's auth router) — recorded as a
+    transitive obligation on every T070+ route, pre-verified via
+    `tests/integration/test_service_error_handlers.py`.
+-   9 new tests total (6 negative-access + 3 for the new error
+    handlers). Verified locally: 185 passed, 1 skipped (T012-gated),
+    ruff clean across all three Python trees, mypy clean (66 source
+    files).
+
+Next: T040 --- Provider interface (generic `ProviderAdapter` contract —
+resolves the interim `ProviderConfigValidator` Protocol T034 created
+explicitly to be reconciled here).
