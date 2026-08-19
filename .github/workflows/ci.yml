@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect backend project
+        id: backend
+        run: |
+          if [ -f apps/api/pyproject.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.backend.outputs.exists == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+
+      - name: Install backend dependencies
+        if: steps.backend.outputs.exists == 'true'
+        working-directory: apps/api
+        run: pip install -e ".[dev]"
+
+      - name: Ruff format check
+        if: steps.backend.outputs.exists == 'true'
+        working-directory: apps/api
+        run: ruff format --check .
+
+      - name: Ruff lint
+        if: steps.backend.outputs.exists == 'true'
+        working-directory: apps/api
+        run: ruff check .
+
+      - name: mypy
+        if: steps.backend.outputs.exists == 'true'
+        working-directory: apps/api
+        run: mypy .
+
+      - name: pytest
+        if: steps.backend.outputs.exists == 'true'
+        working-directory: apps/api
+        run: pytest
+
+      - name: No backend project yet
+        if: steps.backend.outputs.exists == 'false'
+        run: echo "apps/api has no pyproject.toml yet (lands in T010) — skipping backend checks."
+
+  frontend:
+    name: Frontend (TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect frontend project
+        id: frontend
+        run: |
+          if [ -f apps/web/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.frontend.outputs.exists == 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install frontend dependencies
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Lint
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Type check
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Tests
+        if: steps.frontend.outputs.exists == 'true'
+        working-directory: apps/web
+        run: npm test --if-present
+
+      - name: No frontend project yet
+        if: steps.frontend.outputs.exists == 'false'
+        run: echo "apps/web has no package.json yet (lands in T011) — skipping frontend checks."

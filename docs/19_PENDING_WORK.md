@@ -4,7 +4,7 @@
 
 -   [x] T000 repository bootstrap
 -   [x] T001 coding standards
--   [ ] T002 CI baseline
+-   [x] T002 CI baseline
 -   [ ] T010 Python environment
 -   [ ] T011 Node environment
 -   [ ] T012 MySQL

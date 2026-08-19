@@ -2,18 +2,19 @@
 
 ## Active task
 
-T002 --- CI baseline.
+T010 --- Python environment.
 
 ## Previous task
 
-T001 --- Coding standards. COMPLETE. See `docs/18_COMPLETED_WORK.md`
-and `docs/CODING_STANDARDS.md`.
+T002 --- CI baseline. COMPLETE. See `docs/18_COMPLETED_WORK.md` and
+`.github/workflows/ci.yml`.
 
 ## Goal
 
-Create CI that runs Python lint/format check, Python tests, TypeScript
-type check, and frontend lint/test where configured. Keep CI
-deterministic; do not add deployment.
+Create backend Python dependency management (pinned/lockable deps:
+FastAPI, SQLAlchemy, Alembic, MySQL driver, Redis client, Pytest,
+lint/type tooling) under `apps/api`, satisfying the CI contract in
+`docs/16_MEMORY.md`.
 
 ## Not yet in scope
 
@@ -22,10 +23,10 @@ deterministic; do not add deployment.
 -   scraping;
 -   worker execution;
 -   frontend business screens;
--   deployment automation.
+-   scraping packages (only added when their task requires them).
 
 ## Handoff
 
-After T002:
+After T010:
 
-T010 → T011 → T012 → T013 → T014 → T015
+T011 → T012 → T013 → T014 → T015

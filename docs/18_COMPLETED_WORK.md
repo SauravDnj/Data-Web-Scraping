@@ -80,3 +80,27 @@ Evidence:
     for when T010/T011 need them.
 
 Next task: T002 --- CI baseline.
+
+### T002 --- CI baseline
+
+Status: COMPLETE
+
+Evidence:
+
+-   `.github/workflows/ci.yml` created: `backend` job (Python 3.12,
+    Ruff format check, Ruff lint, mypy, pytest) and `frontend` job
+    (Node 20, npm lint/typecheck/test), each running from a clean
+    checkout on push/PR/workflow_dispatch.
+-   Both jobs detect whether their app manifest exists yet
+    (`apps/api/pyproject.toml`, `apps/web/package.json`) and skip with
+    a clear message if not — deterministic green build in the current
+    minimal repository, no deploy/production DB/live Google API calls,
+    no credentials stored.
+-   Verified locally: manifest-detection shell logic runs correctly
+    (both report "not yet present", as expected before T010/T011), and
+    the workflow YAML parses as valid YAML.
+-   Exact contract T010/T011 must satisfy (dependency-group name,
+    script names) recorded in `docs/16_MEMORY.md` so CI activates
+    without further edits.
+
+Next task: T010 --- Python environment.

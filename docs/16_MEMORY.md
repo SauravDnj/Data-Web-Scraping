@@ -69,7 +69,26 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T002 --- CI baseline. (T000, T001 complete.)
+T010 --- Python environment. (T000, T001, T002 complete.)
+
+## CI (T002)
+
+`.github/workflows/ci.yml`: two jobs (backend, frontend), each detects
+whether its app manifest exists (`apps/api/pyproject.toml`,
+`apps/web/package.json`) and no-ops with a message if not, so CI is
+green from a clean checkout right now and activates automatically once
+T010/T011 land — no CI file edit needed then. Pinned: Python 3.12,
+Node 20.
+
+**Contract T010 must satisfy:** `apps/api/pyproject.toml` installable
+via `pip install -e ".[dev]"`, with `ruff`, `mypy`, `pytest` in the
+`dev` extra; `ruff format --check .`, `ruff check .`, `mypy .`,
+`pytest` must all run from `apps/api/`.
+
+**Contract T011 must satisfy:** `apps/web/package.json` with npm
+scripts named exactly `lint`, `typecheck`, and (optional) `test`,
+runnable via `npm run lint` / `npm run typecheck` / `npm test
+--if-present` from `apps/web/`.
 
 ## Coding standards
 
