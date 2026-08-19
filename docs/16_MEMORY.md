@@ -69,14 +69,13 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T062 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T063 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060-T061 complete — Phase 4 Provider and Phase 5 Data
-pipeline both fully done, Phase 6 Worker's first vertical slice
-(T061) working end-to-end. T012/T013 prepared but NOT verified — see
-below. See the dated sections further down for detail; this header is
-not updated inline each time, check docs/17_CURRENT_WORK.md for the
-authoritative up-to-the-minute status.)
+T050-T055, and T060-T062 complete — Phase 4 Provider and Phase 5 Data
+pipeline both fully done, Phase 6 Worker in progress. T012/T013
+prepared but NOT verified — see below. See the dated sections further
+down for detail; this header is not updated inline each time, check
+docs/17_CURRENT_WORK.md for the authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1539,6 +1538,85 @@ continuous heartbeat polling, stale-run detection, and wiring this
 into `worker_main.py`'s actual `while True` loop (not done in T061 —
 `process_next_job()` is a single-call primitive, deliberately not a
 running loop, so it stays independently testable).
+
+## Worker heartbeat (T062) — current task now T063
+
+`workers/jobs/heartbeat.py` (new file, per
+`docs/25_WORKER_FILE_PLAN.md`): `HeartbeatUpdater` (items 1-2, "update
+heartbeat during execution" + "define the interval") +
+`find_stale_job_runs()` (items 3-5, "define the stale threshold" +
+"detect stale job runs" + "prevent healthy workers from being marked
+stale"). `HEARTBEAT_INTERVAL = 30s`, `STALE_THRESHOLD = 5min` — several
+missed-interval's worth of tolerance, so one slow/delayed write can
+never falsely trigger recovery.
+
+**Same "caller supplies the current time, nothing calls
+`datetime.now()` internally" discipline this whole session has held**
+(T038's timezone lesson, T050-T061's `RecordDraft.collected_at`/`now`
+parameters): `HeartbeatUpdater.maybe_beat(current_time)` and
+`find_stale_job_runs(..., now=...)` both take time as an explicit
+argument. This is exactly what makes item 6 ("tests with controlled
+time") straightforward — every test in
+`tests/unit/test_heartbeat.py` passes fixed, hand-picked timestamps;
+none sleeps.
+
+**"Prevent healthy workers from being marked stale" (item 5) needed no
+separate check bolted on** — the stale query's own `WHERE status=
+'running' AND heartbeat_at < cutoff` clause structurally excludes a
+recent heartbeat; there's no code path where a healthy run could slip
+through and get flagged. Verified directly with a dedicated test
+(a healthy run alongside a stale one — only the stale one comes back).
+A `COMPLETED`/`FAILED` run with an old `heartbeat_at` is also
+correctly never flagged — only `RUNNING` rows are candidates at all.
+
+**Heartbeat write failures are caught and logged, never crash the job
+being monitored** (item 7) — `maybe_beat()` wraps the repository write
+in `try/except`, logs a warning, and returns `False`. Documented
+reasoning for why this is safe: a missed beat just makes a run look
+stale a little early, and requeuing an already-finished job is
+harmless as long as claiming stays idempotent, which
+`JobRepository.claim_queued_job()` (T061) already guarantees (it only
+ever succeeds against a row that's genuinely still `QUEUED`).
+
+**Two new `JobRepository` methods**: `touch_heartbeat(run_id, *,
+heartbeat_at)` — a cheap single-column update, deliberately not
+routed through the heavier `finalize_job()`/`finish_run()` machinery,
+since this is meant to be called often. `list_stale_running_runs(*,
+now, stale_threshold)` — the actual query behind
+`find_stale_job_runs()`.
+
+**Wired into `workers/jobs/execute_collection.py`'s existing loop**
+(T061): `HeartbeatUpdater` is constructed right after `create_run()`
+and `maybe_beat(now)` is called once per collected item. Because T061
+still passes one fixed `now` for the whole job run (not a genuinely
+ticking clock), this wiring is currently a no-op in practice for the
+fast, synchronous fake-provider path — documented explicitly as a
+known, deliberate limitation: giving `execute_collection.py` a truly
+advancing clock is deferred until a real, slow, multi-page provider
+call actually needs it, not built speculatively now. All existing
+T061 tests re-verified to still pass unchanged.
+
+9 new tests (`tests/unit/test_heartbeat.py`), against SQLite via the
+real `JobRepository` (same rationale as every other pipeline test this
+session): interval-gating (no premature write, writes once elapsed,
+re-gates after a real write, cheap repeated no-op calls), the
+write-failure-is-caught case, stale detection, healthy-never-flagged
+(alone and alongside a genuinely stale run), and finished-runs-never-
+flagged.
+
+**Two real test-authoring bugs found and fixed, not production
+code**: the shared `_make_run()` test helper initially tried
+`update_status(job.id, JobStatus.RUNNING)` directly from the default
+`DRAFT` status — illegal per T031's state machine (`draft -> running`
+isn't a legal transition; it must go through `queued` first). Fixed
+by transitioning `DRAFT` → `QUEUED` → `RUNNING` explicitly. Separately,
+calling the helper twice in one test with the same default email
+violated the `users.email` unique constraint — fixed by adding an
+`email` parameter to the helper.
+
+Verified locally: 406 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 files in `apps/api`; 9
+files via the separate `workers/pyproject.toml` mypy invocation).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

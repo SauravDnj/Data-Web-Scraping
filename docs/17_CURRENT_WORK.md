@@ -2,42 +2,46 @@
 
 ## Active task
 
-T062 --- Worker heartbeat.
+T063 --- Retry system.
 
 ## Previous task
 
-T061 --- Worker job execution. COMPLETE — "the first major vertical
-slice": `workers/jobs/execute_collection.py`'s `process_next_job()`
-composes T038-T060 into the full dequeue→claim→run→persist→metrics→
-finalize→acknowledge workflow for one job, using only the generic
-`ProviderAdapter` interface (zero Google-specific imports). Three new
-`JobRepository` methods: `claim_queued_job()` (a real atomic
-conditional `UPDATE`, replacing the racy ORM get-then-mutate pattern
-for this one transition), `finalize_job()`, `finish_run()`. Job-level
-status decision (COMPLETED/PARTIALLY_COMPLETED/FAILED) documented and
-tested against docs/08's own worked example. Found and fixed a real
-test-helper bug (`or` silently treating an intentional `{}` as "use
-the default") and a real mypy gap (`Result[Any]` needing a
-`CursorResult` cast for `.rowcount`). 8 new integration tests,
-including the literal acceptance criterion (3 fake records → completed
-job + 3 records, re-verified from a fresh post-commit session). See
+T062 --- Worker heartbeat. COMPLETE — `workers/jobs/heartbeat.py`:
+`HeartbeatUpdater` (interval-gated periodic `JobRun.heartbeat_at`
+updates, `HEARTBEAT_INTERVAL=30s`) + `find_stale_job_runs()`
+(`STALE_THRESHOLD=5min`). Two new `JobRepository` methods
+(`touch_heartbeat`, `list_stale_running_runs`). Healthy runs are never
+falsely flagged — structurally, via the stale query's own WHERE
+clause, verified directly. Heartbeat write failures are caught/logged,
+never crash the monitored job. Wired into T061's `execute_collection.py`
+loop (currently a no-op there in practice, since T061 still uses one
+fixed timestamp for the whole run — documented as deferred until a
+real slow multi-page provider call needs a genuinely ticking clock).
+9 new tests, all with controlled/injected time, no real sleeps. Found
+and fixed two real test-helper bugs (an illegal direct DRAFT→RUNNING
+transition; a duplicate-email unique-constraint collision). See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Make worker liveness observable and recoverable (read
-`docs/T062_PROMPT.md` before assuming scope) — turn T061's one-time
-heartbeat bookend (`JobRun.heartbeat_at` set at run creation, touched
-once more at `finish_run()`) into a real *continuously updated* signal
-during execution, define the heartbeat interval and the stale
-threshold, detect stale job runs (a run whose `heartbeat_at` is older
-than the threshold while still `RUNNING` — presumably a crashed
-worker), and prove a *healthy* long-running job is never mistakenly
-flagged stale. Acceptance: "a stopped worker becomes detectable as
-stale without incorrectly recovering healthy jobs" — needs tests with
-controlled/injected time (matching this whole session's "never call
-`datetime.now()` inside business logic, take time as a parameter"
-discipline), not real sleeps.
+Implement bounded, classified retry behavior (read
+`docs/T063_PROMPT.md` before assuming scope) — maximum attempts,
+exponential backoff (+ jitter if useful), classify the error before
+deciding to retry (`app.domain.job_errors.is_retryable()`, already
+reconciled with `ProviderErrorCategory` at T044), persist the attempt
+count (`JobRun.attempt`, already tracked since T024;
+`app.pipeline.metrics.count_job_run_attempts()` from T055 already
+surfaces it), requeue retryable jobs
+(`workers.queue.RedisJobQueue.requeue()`, T060, or
+`JobService.retry_job()`, T035, depending on which "retry" concept
+this task means — re-examine both before assuming), mark permanent
+failures as final, prevent retry storms (a real abuse-control concern,
+`docs/10_SECURITY_DEEP.md`). Must NOT retry policy/authorization
+failures automatically, retry indefinitely, or bypass quotas — directly
+enforced already by `default_retryable_for_category()` (T044:
+`AUTHENTICATION`/`QUOTA`/`INVALID_REQUEST`/`PERMANENT` are all
+non-retryable by design) and needs a hard attempt ceiling on top of
+that. Test every error class explicitly.
 
 ## Not yet in scope
 

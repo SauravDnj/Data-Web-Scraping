@@ -7,17 +7,26 @@ being changed.
 
 ## Active task
 
-T062 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T061 complete; T027 PARTIAL — see
+T063 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T062 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
 (Provider) and Phase 5 (Data pipeline) both fully complete. Phase 6
-(Worker) in progress — first vertical slice (T061) working.
+(Worker) in progress.
 
 ## Active files
 
 ``` text
-None yet — T062 has not started.
+None yet — T063 has not started.
+```
+
+## T062 files (complete — for reference)
+
+``` text
+workers/jobs/heartbeat.py                      (new)
+workers/jobs/execute_collection.py              (modified — HeartbeatUpdater wired into the collect loop)
+apps/api/app/repositories/jobs.py               (modified — touch_heartbeat/list_stale_running_runs added)
+tests/unit/test_heartbeat.py                    (new)
 ```
 
 ## T061 files (complete — for reference)

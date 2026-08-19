@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Protocol, cast
 
 from sqlalchemy import CursorResult, select, update
@@ -53,6 +53,12 @@ class JobRepository(Protocol):
     def finish_run(
         self, run_id: int, *, status: JobRunStatus, finished_at: datetime
     ) -> JobRun: ...
+
+    def touch_heartbeat(self, run_id: int, *, heartbeat_at: datetime) -> JobRun: ...
+
+    def list_stale_running_runs(
+        self, *, now: datetime, stale_threshold: timedelta
+    ) -> list[JobRun]: ...
 
 
 class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
@@ -264,3 +270,36 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
         row.heartbeat_at = finished_at
         self._session.flush()
         return self._run_to_domain(row)
+
+    def touch_heartbeat(self, run_id: int, *, heartbeat_at: datetime) -> JobRun:
+        """T062 item 1 — the periodic liveness write during execution
+        (as opposed to `finish_run()`'s one-time closing touch). A
+        single-column update, deliberately not going through
+        `finalize_job()`'s heavier machinery — this is meant to be
+        called often and cheaply."""
+        row = self._session.get(JobRunRow, run_id)
+        if row is None:
+            raise LookupError(f"JobRun {run_id} does not exist.")
+        row.heartbeat_at = heartbeat_at
+        self._session.flush()
+        return self._run_to_domain(row)
+
+    def list_stale_running_runs(
+        self, *, now: datetime, stale_threshold: timedelta
+    ) -> list[JobRun]:
+        """T062 items 3-5 — every `RUNNING` run whose last heartbeat is
+        older than `stale_threshold` relative to `now` (both supplied
+        by the caller, never read internally — same injected-time
+        discipline as every other timestamp comparison in this
+        codebase, T038's `as_naive_utc` lesson included). A run with a
+        recent heartbeat is structurally excluded by the `WHERE`
+        clause itself — a healthy worker is never a false positive
+        here, not by a separate check bolted on afterward."""
+        cutoff = now - stale_threshold
+        rows = self._session.scalars(
+            select(JobRunRow).where(
+                JobRunRow.status == JobRunStatus.RUNNING,
+                JobRunRow.heartbeat_at < cutoff,
+            )
+        ).all()
+        return [self._run_to_domain(row) for row in rows]

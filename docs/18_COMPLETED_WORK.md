@@ -1379,3 +1379,48 @@ session now works together end-to-end for one real job.
 
 Next: T062 --- Worker heartbeat (continuous liveness signal during
 execution, stale-run detection, healthy jobs never falsely recovered).
+
+### T062 --- Worker heartbeat
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/jobs/heartbeat.py`: `HeartbeatUpdater` (interval-gated
+    periodic `JobRun.heartbeat_at` updates via `maybe_beat()`,
+    `HEARTBEAT_INTERVAL=30s`) + `find_stale_job_runs()`
+    (`STALE_THRESHOLD=5min` — several missed intervals' worth of
+    tolerance).
+-   Two new `JobRepository` methods: `touch_heartbeat()` (cheap
+    single-column update) and `list_stale_running_runs()` (the query
+    behind `find_stale_job_runs()`).
+-   "Prevent healthy workers from being marked stale" needed no
+    separate check — the stale query's own `WHERE` clause structurally
+    excludes a recent heartbeat; verified directly with a healthy-run-
+    alongside-a-stale-one test. A finished run with an old heartbeat
+    is also correctly never flagged (only `RUNNING` rows qualify).
+-   Heartbeat write failures are caught, logged, and never crash the
+    monitored job — a missed beat only makes a run look stale a little
+    early, which is safe because claiming stays idempotent (T061's
+    `claim_queued_job()`).
+-   Wired into T061's `execute_collection.py` loop; currently a no-op
+    there in practice since T061 uses one fixed timestamp for the
+    whole run — documented as a deliberate limitation, deferred until
+    a real slow multi-page provider call needs a genuinely ticking
+    clock, not built speculatively now.
+-   Every timestamp in every test is supplied explicitly by the test
+    (item 6) — no real sleeps anywhere.
+-   **Found and fixed two real test-authoring bugs**: an illegal
+    direct `DRAFT`→`RUNNING` transition in a shared test helper (must
+    go through `QUEUED` first, per T031's state machine), and a
+    duplicate-email unique-constraint collision from calling the
+    helper twice with the same default email.
+-   9 new tests covering interval-gating, the write-failure case,
+    stale detection, and both "never falsely flagged" scenarios.
+-   Verified locally: 406 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    9 files via the separate `workers/pyproject.toml` invocation).
+
+Next: T063 --- Retry system (bounded, classified retry — max attempts,
+exponential backoff, requeue retryable jobs, mark permanent failures
+final, prevent retry storms).

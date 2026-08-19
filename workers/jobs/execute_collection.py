@@ -11,6 +11,11 @@ supplied by the caller for exactly this reason — the Google-specific
 values (`GOOGLE_FIELD_RULES`, `GOOGLE_MAPS_TEXT_SEARCH_OPERATION`) live
 in `app.providers.google_maps.mapper`, not here.
 
+Updated at T062 to wire in `workers.jobs.heartbeat.HeartbeatUpdater`
+(item 5, "start heartbeat" — was previously just the `JobRun.
+heartbeat_at` column default with no periodic refresh during
+execution).
+
 Maps directly onto T061's 17 IMPLEMENT items, in the order they run:
 
 1.  Dequeue job ID — `queue.dequeue()` (T060).
@@ -21,7 +26,8 @@ Maps directly onto T061's 17 IMPLEMENT items, in the order they run:
 4.  Update status to running — part of `claim_queued_job()`'s single
     atomic `UPDATE` (not a separate step).
 5.  Start heartbeat — `JobRun.heartbeat_at`'s own column default
-    (T024); no continuous polling here, that's T062.
+    (T024), refreshed periodically during the loop below via
+    `workers.jobs.heartbeat.HeartbeatUpdater` (T062).
 6.  Load the exact configuration version pinned to this job —
     `CollectionConfigRepository.get(job.config_id)` (T024 already
     pins a specific version, not "whatever's active now").
@@ -78,6 +84,7 @@ from app.repositories.jobs import JobRepository
 from app.repositories.records import RecordRepository
 from sqlalchemy.orm import Session
 
+from workers.jobs.heartbeat import HeartbeatUpdater
 from workers.queue import JobQueue
 
 
@@ -129,6 +136,7 @@ def process_next_job(
             )
         )
         assert run.id is not None
+        heartbeat = HeartbeatUpdater(job_repository, run.id, started_at=now)
 
         status, error = _execute(
             job,
@@ -137,6 +145,7 @@ def process_next_job(
             job_repository,
             config_repository,
             record_repository,
+            heartbeat=heartbeat,
             field_rules=field_rules,
             provider_operation=provider_operation,
             now=now,
@@ -172,6 +181,7 @@ def _execute(
     config_repository: CollectionConfigRepository,
     record_repository: RecordRepository,
     *,
+    heartbeat: HeartbeatUpdater,
     field_rules: Mapping[str, FieldRule],
     provider_operation: str,
     now: datetime,
@@ -203,6 +213,7 @@ def _execute(
     drafts: list[RecordDraft] = []
     validation_results: list[ValidationResult] = []
     for raw_item in raw_items:
+        heartbeat.maybe_beat(now)  # item 1 — interval-gated, cheap to call per item
         normalized = provider.normalize(raw_item)
         draft = RecordDraft(
             project_id=job.project_id,
