@@ -69,7 +69,27 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T010 --- Python environment. (T000, T001, T002 complete.)
+T011 --- Next.js environment. (T000, T001, T002, T010 complete.)
+
+## Python environment (T010)
+
+`apps/api/pyproject.toml`: FastAPI, uvicorn, SQLAlchemy 2.x, Alembic,
+PyMySQL, redis-py, pydantic + pydantic-settings; dev extra: pytest,
+pytest-asyncio, httpx, ruff, mypy. Editable install:
+`pip install -e ".[dev]"` from `apps/api/`, Python >=3.12 (matches CI's
+3.12 pin; local machine has 3.14, both fine).
+
+**Important repo-layout note**: `tests/` (root-level, per coding
+standards) is TWO directories above `apps/api/pyproject.toml`, so its
+`[tool.pytest.ini_options] testpaths` is `["../../tests"]`, not
+`["../tests"]` — verified locally (`../tests` silently found nothing
+and fell back to recursive discovery). If a future task adds another
+per-app pyproject.toml, recompute this relative path from that file's
+actual location, don't copy the value blindly.
+
+Verified locally: clean venv install succeeds with no errors, `pytest`
+(2 passed), `ruff format --check`, `ruff check`, and `mypy` all pass
+from a clean environment.
 
 ## CI (T002)
 

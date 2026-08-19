@@ -10,7 +10,7 @@ tests: 0% V1: 0%
   Phase                Status      Completion
   -------------------- --------- ------------
   0 Governance         COMPLETE          100%
-  1 Local foundation   IN_PROGRESS        25%
+  1 Local foundation   IN_PROGRESS        40%
   2 Database           PENDING             0%
   3 Backend            PENDING             0%
   4 Provider           PENDING             0%
@@ -23,12 +23,12 @@ tests: 0% V1: 0%
 
 ## Current task
 
-T010 --- Python environment.
+T011 --- Next.js environment.
 
 ## Last verified milestone
 
-T002 --- CI baseline complete (.github/workflows/ci.yml, self-activating
-once T010/T011 land).
+T010 --- Python environment complete and verified locally (clean
+install, pytest/ruff/mypy all pass). CI backend job is now live.
 
 ## Rule
 

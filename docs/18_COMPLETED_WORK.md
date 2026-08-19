@@ -104,3 +104,31 @@ Evidence:
     without further edits.
 
 Next task: T010 --- Python environment.
+
+### T010 --- Python environment
+
+Status: COMPLETE
+
+Evidence:
+
+-   `apps/api/pyproject.toml`: FastAPI, uvicorn, SQLAlchemy, Alembic,
+    PyMySQL, redis-py, pydantic/pydantic-settings; `dev` extra with
+    pytest, pytest-asyncio, httpx, ruff, mypy. Ruff/mypy config
+    included (satisfies the CI contract from T002).
+-   `apps/api/app/__init__.py` — minimal importable package (no
+    business logic).
+-   `tests/unit/test_environment.py` — smoke test verifying the
+    package and all core dependencies import correctly.
+-   `apps/api/README.md` updated with venv setup and command
+    reference; root `README.md` Development section updated.
+-   Verified locally end-to-end: `python -m venv .venv` →
+    `pip install -e ".[dev]"` (clean install, no errors) →
+    `pytest` (2 passed) → `ruff format --check .` (pass) →
+    `ruff check .` (pass) → `mypy .` (pass). `.venv/` correctly
+    excluded from Git (`git status` clean of it).
+-   Fixed a relative-path bug in `testpaths` discovered during local
+    verification (see docs/16_MEMORY.md).
+-   No Google credentials, no browser automation, no scraping
+    dependencies added.
+
+Next task: T011 --- Next.js environment.

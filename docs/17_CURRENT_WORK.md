@@ -2,19 +2,19 @@
 
 ## Active task
 
-T010 --- Python environment.
+T011 --- Next.js environment.
 
 ## Previous task
 
-T002 --- CI baseline. COMPLETE. See `docs/18_COMPLETED_WORK.md` and
-`.github/workflows/ci.yml`.
+T010 --- Python environment. COMPLETE. See `docs/18_COMPLETED_WORK.md`
+and `apps/api/pyproject.toml`.
 
 ## Goal
 
-Create backend Python dependency management (pinned/lockable deps:
-FastAPI, SQLAlchemy, Alembic, MySQL driver, Redis client, Pytest,
-lint/type tooling) under `apps/api`, satisfying the CI contract in
-`docs/16_MEMORY.md`.
+Bootstrap the Next.js + TypeScript application under `apps/web`: strict
+TypeScript, basic layout, API base URL configuration, no secrets in
+client-side variables. Must satisfy the CI contract in
+`docs/16_MEMORY.md` (npm scripts `lint`, `typecheck`, optional `test`).
 
 ## Not yet in scope
 
@@ -22,11 +22,10 @@ lint/type tooling) under `apps/api`, satisfying the CI contract in
 -   Google provider calls;
 -   scraping;
 -   worker execution;
--   frontend business screens;
--   scraping packages (only added when their task requires them).
+-   frontend business screens (only basic shell/layout).
 
 ## Handoff
 
-After T010:
+After T011:
 
-T011 → T012 → T013 → T014 → T015
+T012 → T013 → T014 → T015

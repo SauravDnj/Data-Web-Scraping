@@ -57,6 +57,8 @@ task-by-task per `docs/00_TASK_INDEX.md` (T000–T103). See
 
 ## Development
 
-Environment setup (Python backend, Next.js frontend, MySQL, Redis) is
-established in tasks T010–T015 and documented in `docs/10_LOCAL_SETUP.md`.
-Until those tasks land, there are no install/run commands yet.
+- Backend (Python): see [`apps/api/README.md`](apps/api/README.md) (T010).
+- Frontend (Next.js), MySQL, Redis, worker: established in tasks
+  T011–T015; see `docs/10_LOCAL_SETUP.md` for the full local
+  environment guide. Until those tasks land, only the backend has
+  install/run commands.
