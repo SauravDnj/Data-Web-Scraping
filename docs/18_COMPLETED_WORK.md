@@ -1424,3 +1424,44 @@ Evidence:
 Next: T063 --- Retry system (bounded, classified retry — max attempts,
 exponential backoff, requeue retryable jobs, mark permanent failures
 final, prevent retry storms).
+
+### T063 --- Retry system
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/jobs/retry.py`: `RetryPolicy`/`should_retry()`/
+    `compute_backoff_delay()` (pure) + `count_retry_chain_length()`/
+    `retry_failed_job()` (DB-touching, composes T035's `JobService.
+    retry_job()` + T060's `RedisJobQueue.enqueue()`).
+-   **Worked within the existing architecture rather than inventing a
+    parallel one**: `FAILED` is terminal in T031's state machine — a
+    retry has always meant a NEW `Job` row (T035's `retry_job()`,
+    already built). T063 closed the one real gap that mechanism had:
+    no bound on retry count at all (a literal "retry indefinitely"
+    violation of this task's own DO NOT list).
+-   Max attempts tracked without a schema migration —
+    `count_retry_chain_length()` walks the existing `JOB_RETRIED`
+    audit trail (T037) backward, reusing infrastructure exactly as
+    designed rather than adding a column for one counter.
+-   Backoff is defined and rigorously tested as a pure function
+    (exact values at zero jitter, +/-20% bounds, 50 random draws) but
+    documented as not yet enforced as real delayed queue delivery —
+    `RedisJobQueue` has no delayed-delivery primitive and no task
+    before this one built one; the hard `max_attempts` ceiling alone
+    is what prevents retry storms today.
+-   All 7 `ProviderErrorCategory` values tested explicitly against
+    their actual end-to-end retry outcome (not just the classification
+    layer in isolation).
+-   25 new tests: pure policy edges, chain-length growth, and full
+    `retry_failed_job()` behavior (requeued+dequeuable,
+    permanently-failed-never-retried, and a 3-call ceiling test that
+    caught a genuine off-by-one in its own first draft).
+-   Verified locally: 428 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    10 files via the separate `workers/pyproject.toml` invocation).
+
+Next: T064 --- Cancellation (cooperative job cancellation — a request
+state distinct from the terminal CANCELLED status, worker checks
+between safe units, clean finalization, no ambiguous DB state).

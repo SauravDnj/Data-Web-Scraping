@@ -2,46 +2,42 @@
 
 ## Active task
 
-T063 --- Retry system.
+T064 --- Cancellation.
 
 ## Previous task
 
-T062 --- Worker heartbeat. COMPLETE — `workers/jobs/heartbeat.py`:
-`HeartbeatUpdater` (interval-gated periodic `JobRun.heartbeat_at`
-updates, `HEARTBEAT_INTERVAL=30s`) + `find_stale_job_runs()`
-(`STALE_THRESHOLD=5min`). Two new `JobRepository` methods
-(`touch_heartbeat`, `list_stale_running_runs`). Healthy runs are never
-falsely flagged — structurally, via the stale query's own WHERE
-clause, verified directly. Heartbeat write failures are caught/logged,
-never crash the monitored job. Wired into T061's `execute_collection.py`
-loop (currently a no-op there in practice, since T061 still uses one
-fixed timestamp for the whole run — documented as deferred until a
-real slow multi-page provider call needs a genuinely ticking clock).
-9 new tests, all with controlled/injected time, no real sleeps. Found
-and fixed two real test-helper bugs (an illegal direct DRAFT→RUNNING
-transition; a duplicate-email unique-constraint collision). See
+T063 --- Retry system. COMPLETE — `workers/jobs/retry.py`:
+`RetryPolicy`/`should_retry()`/`compute_backoff_delay()` (pure) +
+`count_retry_chain_length()`/`retry_failed_job()` (DB-touching).
+Discovered T035's `retry_job()` (already the canonical "new Job row"
+retry mechanism, since `FAILED` is a terminal state in T031's machine)
+had no attempt bound at all — a genuine "retry indefinitely" gap,
+closed here via `count_retry_chain_length()` walking the existing
+`JOB_RETRIED` audit trail (T037) backward, no schema migration needed.
+Backoff is defined and thoroughly tested as a pure function but not
+yet enforced as real delayed queue delivery (no delayed-delivery
+primitive exists in `RedisJobQueue`, T060) — documented as a
+deliberate scope boundary; the hard attempt ceiling alone already
+prevents retry storms. All 7 `ProviderErrorCategory` values tested
+against their actual retry outcome. 25 new tests. See
 `docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement bounded, classified retry behavior (read
-`docs/T063_PROMPT.md` before assuming scope) — maximum attempts,
-exponential backoff (+ jitter if useful), classify the error before
-deciding to retry (`app.domain.job_errors.is_retryable()`, already
-reconciled with `ProviderErrorCategory` at T044), persist the attempt
-count (`JobRun.attempt`, already tracked since T024;
-`app.pipeline.metrics.count_job_run_attempts()` from T055 already
-surfaces it), requeue retryable jobs
-(`workers.queue.RedisJobQueue.requeue()`, T060, or
-`JobService.retry_job()`, T035, depending on which "retry" concept
-this task means — re-examine both before assuming), mark permanent
-failures as final, prevent retry storms (a real abuse-control concern,
-`docs/10_SECURITY_DEEP.md`). Must NOT retry policy/authorization
-failures automatically, retry indefinitely, or bypass quotas — directly
-enforced already by `default_retryable_for_category()` (T044:
-`AUTHENTICATION`/`QUOTA`/`INVALID_REQUEST`/`PERMANENT` are all
-non-retryable by design) and needs a hard attempt ceiling on top of
-that. Test every error class explicitly.
+Implement cooperative job cancellation (read `docs/T064_PROMPT.md`
+before assuming scope) — a cancellation-request state distinct from
+the terminal `CANCELLED` status (T031's state machine already allows
+`queued→cancelled`/`running→cancelled`/`paused→cancelled`, but has no
+"please stop, still running" intermediate signal), an API-facing way
+to record that request (though no job API routes exist yet, T070+ —
+check whether this task expects a service-layer method only, or a
+real route), the worker checking for a pending cancellation between
+safe units of work during `collect()`/persistence (T061's loop),
+stopping at a safe boundary rather than mid-record, and finalizing as
+`CANCELLED` cleanly — no ambiguous partial DB state, no orphaned
+in-flight queue message. Prevent cancelling an already-terminal job.
+Test cancellation actually interrupting active processing, not just
+a pre-emptive check before any work starts.
 
 ## Not yet in scope
 

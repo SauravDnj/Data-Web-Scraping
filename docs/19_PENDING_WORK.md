@@ -121,7 +121,10 @@
         `HeartbeatUpdater`/`find_stale_job_runs()`; healthy runs
         structurally never falsely flagged; controlled-time tests only
         — see docs/16_MEMORY.md)
--   [ ] T063--T065 worker
+-   [x] T063 Retry system (`workers/jobs/retry.py` — bounded via the
+        existing audit trail, no schema change; every error category
+        tested end-to-end — see docs/16_MEMORY.md)
+-   [ ] T064--T065 worker
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality

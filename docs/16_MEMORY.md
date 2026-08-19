@@ -69,9 +69,9 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T063 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T064 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060-T062 complete — Phase 4 Provider and Phase 5 Data
+T050-T055, and T060-T063 complete — Phase 4 Provider and Phase 5 Data
 pipeline both fully done, Phase 6 Worker in progress. T012/T013
 prepared but NOT verified — see below. See the dated sections further
 down for detail; this header is not updated inline each time, check
@@ -1616,6 +1616,80 @@ violated the `users.email` unique constraint — fixed by adding an
 
 Verified locally: 406 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (80 files in `apps/api`; 9
+files via the separate `workers/pyproject.toml` mypy invocation).
+
+## Retry system (T063) — current task now T064
+
+`workers/jobs/retry.py` (new file, per
+`docs/25_WORKER_FILE_PLAN.md`): `RetryPolicy`/`should_retry()`/
+`compute_backoff_delay()` (pure, items 1-4) +
+`count_retry_chain_length()` + `retry_failed_job()` (DB-touching,
+items 5-7).
+
+**Resolved a real architectural ambiguity by discovering the codebase
+had already settled it**: T063's dependency list (T044, T061) doesn't
+mention T035, which was initially puzzling — but re-reading T031's
+memory entry made it clear why: `FAILED` is a *terminal* `Job` status
+with no outgoing transition, and T035's `JobService.retry_job()`
+already implements "retry = a NEW `Job` row referencing the same
+project/config, never a resurrection of the old row" as a deliberate,
+already-settled decision. T063 does not reinvent a same-row retry
+mechanism (which the state machine structurally forbids) — it works
+within the existing one, closing the one real gap it had: `retry_job()`
+gated on `is_retryable()` alone, with **no bound on how many times a
+lineage could be retried** — a genuine, literal "retry indefinitely"
+violation of T063's own DO NOT list, now fixed.
+
+**Max attempts without a schema migration**: there is no
+`original_job_id` column on `Job` — retry lineage is only recorded in
+the audit trail (`retry_job()`'s existing `JOB_RETRIED` event, T037,
+whose `details` already contains `original_job_id`).
+`count_retry_chain_length()` walks that trail backward
+(`AuditLogRepository.list_for_entity("job", job_id)`, T037) to count
+how many times the lineage has already been retried — reusing
+existing infrastructure exactly as it was designed, rather than adding
+a new column for one counter.
+
+**Backoff is defined and rigorously tested as a pure function, but not
+yet enforced as real delayed queue delivery — a deliberate, documented
+scope boundary, not an oversight**: `RedisJobQueue` (T060) is a plain
+FIFO list with no delayed-delivery primitive, and no task before this
+one built one (that would be a natural fit for a future task
+alongside T083's scheduler). `compute_backoff_delay()` computes the
+correct exponential-with-jitter value (verified for exact values at
+zero jitter, for the +/-20% bounds, and across 50 random draws) for
+whenever real delayed delivery exists to consume it; today, an
+eligible retry is enqueued immediately. The literal acceptance
+criterion ("retryable failures recover within configured limits;
+permanent failures stop") holds regardless, since it concerns
+*whether* a bounded retry happens, not its exact timing — and "prevent
+retry storms" (item 8) is satisfied by the hard `max_attempts` ceiling
+itself: an unbounded instant-retry loop is structurally impossible
+once attempts are capped, even without delay enforcement.
+
+**Every documented error category tested explicitly against its
+actual retry decision** (item 9, parametrized over all 7
+`ProviderErrorCategory` values): `authentication`/`quota`/
+`invalid_request`/`permanent`/`unknown` never retried;
+`rate`/`temporary` retried — matching `default_retryable_for_category()`
+exactly (T044), proving the DO NOT rule ("never retry provider policy/
+authorization failures automatically") holds end-to-end through this
+new code path, not just at the classification layer alone.
+
+25 new tests (`tests/unit/test_retry.py`): pure policy tests (attempt-
+bound edges, exponential growth across 3 attempts, positive/negative
+jitter exact values, non-negative floor, random-jitter bounds across
+50 draws), chain-length tests (zero for an original job, growing by
+one per retry against a real two-hop chain), and the DB-touching
+`retry_failed_job()` tests (retryable failure requeued and dequeuable,
+permanent failure never retried and queue stays empty, a 3-attempt
+ceiling test proving the *third* retry attempt is what actually gets
+blocked — caught and fixed a genuine off-by-one in the test's own
+first draft, not the implementation, by tracing through exactly what
+chain length each call would see).
+
+Verified locally: 428 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 files in `apps/api`; 10
 files via the separate `workers/pyproject.toml` mypy invocation).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action

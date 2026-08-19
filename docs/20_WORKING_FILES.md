@@ -7,8 +7,8 @@ being changed.
 
 ## Active task
 
-T063 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T062 complete; T027 PARTIAL — see
+T064 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T063 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
 (Provider) and Phase 5 (Data pipeline) both fully complete. Phase 6
@@ -17,7 +17,14 @@ action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
 ## Active files
 
 ``` text
-None yet — T063 has not started.
+None yet — T064 has not started.
+```
+
+## T063 files (complete — for reference)
+
+``` text
+workers/jobs/retry.py           (new)
+tests/unit/test_retry.py        (new)
 ```
 
 ## T062 files (complete — for reference)
