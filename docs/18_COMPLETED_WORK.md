@@ -1521,3 +1521,73 @@ Next: T065 --- Worker recovery (detect stale job runs after a worker
 crash, decide retryability, requeue or fail exhausted jobs, guarantee
 a single active execution owner, test simulated crash / duplicate
 delivery / heartbeat loss).
+
+### T065 --- Worker recovery
+
+Status: COMPLETE
+
+Evidence:
+
+-   `workers/jobs/recovery.py`: `recover_stale_job_runs()` — built
+    almost entirely by composing already-existing pieces: T062's
+    `find_stale_job_runs()` (detection, had zero callers until now)
+    and T063's `retry_failed_job()` (retryability/bounded-attempt/
+    requeue decision, reused verbatim). The only new logic is safely
+    reclaiming a stale `JobRun` and turning it into a real `FAILED`
+    `Job` outcome, since T035's `retry_job()` requires `FAILED` to act
+    on.
+-   New `JobRepository.close_stale_run()`: same atomic conditional-
+    `UPDATE ... WHERE status='running' AND heartbeat_at < stale_before`
+    shape as `claim_queued_job()` (T061) and `request_cancellation()`
+    (T064) — re-verifies staleness at write time, so a run whose
+    worker sent a fresh heartbeat in between is left untouched, and
+    concurrent recovery sweeps can never both win the same run.
+-   New `app.domain.job_errors.WORKER_CRASHED_ERROR_CODE`
+    (`"worker_crashed"`) — non-provider, always-retryable, same
+    pattern as `"persistence"` (now also a named
+    `PERSISTENCE_ERROR_CODE` constant). New `AuditAction.JOB_RECOVERED`,
+    recorded with `actor_user_id=None` (a system process) — proves
+    `AuditService.record_event()`'s nullable actor, unused until now.
+-   **Item 6 ("ensure only one active execution owner exists")
+    answered honestly, not perfectly**: heartbeat-based liveness has
+    an inherent false-positive risk no tool in this codebase (no
+    distributed lock, no fencing tokens — Redis stays coordination-
+    only) can fully close. Three combined, already-existing safeguards
+    bound the risk instead: the atomic reclaim above; `finalize_job()`'s
+    own state-machine `transition()` call, which raises
+    `InvalidJobTransition` (caught, logged, not overridden) if the
+    "dead" worker was actually still alive and already finished the
+    job; and retry always creating a **new** `Job` row (T035,
+    unchanged), so even a worst-case zombie write can't corrupt a
+    shared counter, and any duplicate *record* it could still produce
+    collapses back into one row via T053/T054's existing dedup-by-
+    canonical-key. Documented explicitly as bounded, not perfect —
+    same spirit as T063's un-enforced backoff delay.
+-   **Flagged, not built**: `workers/worker_main.py`'s main loop is
+    still T015's placeholder — no task T061-T065 has wired
+    `process_next_job()` or `recover_stale_job_runs()` into a real,
+    continuously-running process. Recorded loudly rather than built
+    speculatively; `docs/00_TASK_INDEX.md`'s T091 (Reliability review)
+    is the first task that reads as needing a real loop.
+-   10 new tests (`tests/unit/test_recovery.py`): simulated crash
+    recovered end-to-end (stale run closed, job marked `FAILED` with
+    `worker_crashed`, requeued as a new dequeuable `QUEUED` job, audit
+    event recorded), a fresh-heartbeat run never falsely recovered,
+    recovering the same stale run twice only recovers once
+    (duplicate-delivery/single-owner proof), a job that genuinely
+    finished normally right as its run went stale is left untouched,
+    and a lineage already at its retry ceiling is marked failed
+    without a second requeue.
+-   Verified locally: 441 passed, 1 skipped (T012-gated), ruff clean
+    across all three Python trees, mypy clean (80 files in `apps/api`;
+    11 files via the separate `workers/pyproject.toml` invocation).
+
+**Phase 6 (Worker) is now fully complete**: T060 (queue) → T061
+(execution) → T062 (heartbeat) → T063 (retry) → T064 (cancellation) →
+T065 (recovery).
+
+Next: T070 --- Next.js app shell (main layout, navigation, active-route
+state, auth-aware layout, loading/error/empty-state UI, toast
+mechanism, responsive behavior, accessibility basics — placeholder
+pages for Dashboard/Projects/Jobs/Records/Schedules/Settings; no
+business forms yet). Phase 7 (Frontend) begins.

@@ -66,6 +66,10 @@ class JobRepository(Protocol):
         self, *, now: datetime, stale_threshold: timedelta
     ) -> list[JobRun]: ...
 
+    def close_stale_run(
+        self, run_id: int, *, stale_before: datetime, finished_at: datetime
+    ) -> JobRun | None: ...
+
 
 class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
     model = JobRow
@@ -348,3 +352,42 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
             )
         ).all()
         return [self._run_to_domain(row) for row in rows]
+
+    def close_stale_run(
+        self, run_id: int, *, stale_before: datetime, finished_at: datetime
+    ) -> JobRun | None:
+        """T065 item 6 ("ensure only one active execution owner
+        exists") — the atomic conditional `UPDATE` a recovery process
+        uses to close a run `list_stale_running_runs()` found, same
+        shape and same reason as `claim_queued_job()`/
+        `request_cancellation()`: the `WHERE status='running' AND
+        heartbeat_at < stale_before` clause re-verifies staleness at
+        the moment of the write, not just at listing time, so a run
+        whose worker wrote a fresh heartbeat in between (a false
+        positive, still alive, just briefly slow) is left untouched —
+        and if two recovery passes race for the same genuinely-stale
+        run, only one of them can win this `UPDATE`. Returns `None` in
+        either case; the caller must treat that as "not mine, someone
+        else is handling it (or it wasn't actually stale)."""
+        result = cast(
+            CursorResult,
+            self._session.execute(
+                update(JobRunRow)
+                .where(
+                    JobRunRow.id == run_id,
+                    JobRunRow.status == JobRunStatus.RUNNING,
+                    JobRunRow.heartbeat_at < stale_before,
+                )
+                .values(
+                    status=JobRunStatus.FAILED,
+                    finished_at=finished_at,
+                    heartbeat_at=finished_at,
+                )
+            ),
+        )
+        self._session.flush()
+        if result.rowcount == 0:
+            return None
+        row = self._session.get(JobRunRow, run_id)
+        assert row is not None
+        return self._run_to_domain(row)

@@ -2,44 +2,43 @@
 
 ## Active task
 
-T065 --- Worker recovery.
+T070 --- Next.js app shell. Phase 7 (Frontend) starts here.
 
 ## Previous task
 
-T064 --- Cancellation. COMPLETE — new `jobs.cancel_requested`/
-`cancel_requested_at` columns (migration `ee8f2297969d`); reconciled
-with T035's pre-existing `JobService.cancel_job()` (found it hard-
-transitioned a `RUNNING` job's status directly, which could race the
-worker's own `finalize_job()` and leave an `InvalidJobTransition`
-crash waiting to happen — exactly the "ambiguous state" this task
-exists to prevent). `cancel_job()` now cancels
-DRAFT/QUEUED/PAUSED jobs immediately (no worker owns them) but only
-*requests* cancellation for a `RUNNING` job, via the new atomic
-`JobRepository.request_cancellation()` (same conditional-`UPDATE`
-shape as T061's `claim_queued_job()`). The worker
-(`workers/jobs/execute_collection.py`) checks
-`is_cancellation_requested()` between items (same spot as T062's
-heartbeat) and stops at that safe boundary, keeping whatever was
-already persisted from earlier items in the batch. Already-terminal
-jobs (including already-`CANCELLED`) are rejected up front. 10 new
-tests. See `docs/18_COMPLETED_WORK.md`.
+T065 --- Worker recovery. COMPLETE — `workers/jobs/recovery.py`:
+`recover_stale_job_runs()`, composed almost entirely from existing
+pieces (T062's `find_stale_job_runs()`, T063's `retry_failed_job()`).
+New `JobRepository.close_stale_run()` (same atomic conditional-UPDATE
+shape as `claim_queued_job()`/`request_cancellation()`) safely
+reclaims a stale `JobRun`; the job is then finalized `FAILED` with a
+new `WORKER_CRASHED_ERROR_CODE` and handed to T063's unchanged
+retry/exhaustion logic. "Only one active execution owner" is answered
+with three combined, already-existing safeguards (atomic reclaim,
+`finalize_job()`'s own state-machine guard, and retry-always-creates-
+a-new-job-row) rather than a new distributed lock — explicitly
+documented as a bounded, honest answer, not a claim of perfect
+exactly-once execution. `workers/worker_main.py`'s loop is still a
+placeholder — neither `process_next_job()` nor
+`recover_stale_job_runs()` is wired into a real running process by any
+task through T065; flagged as an open cross-cutting gap, likely closed
+around T091 (Reliability review) or an operations task. 10 new tests.
+**Phase 6 (Worker) is now fully complete.** See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Implement worker recovery (read `docs/T065_PROMPT.md` before assuming
-scope) — detect stale `JobRun`s (T062's `list_stale_running_runs()`
-already exists and is unused by any caller yet), decide whether the
-owning job is retryable and safely requeue it via T063's
-`retry_failed_job()` machinery (or an equivalent path — check whether
-recovery should create a new attempt on the SAME job or go through
-T035/T063's "retry = new Job row" pattern; T065's own IMPLEMENT list
-says "increment attempt safely," which may mean a same-job re-run
-distinct from T063's user-initiated retry, needs a design decision
-same as T041/T052/T063 before writing code), mark exhausted jobs
-failed, and guarantee only one active execution owner exists at a
-time (no duplicate processing from a crashed-then-recovered worker
-racing a still-alive one). Test a simulated crash, duplicate queue
-delivery, and recovery after heartbeat loss specifically.
+Build the Next.js dashboard shell (read `docs/T070_PROMPT.md`,
+`docs/06_UI_DEEP.md`, and `docs/23_UI_FILE_PLAN.md` before assuming
+scope) — main layout, sidebar/top navigation, active-route state, an
+auth-aware layout (T038's session/login already exists on the backend;
+check what the frontend currently has for calling it, from T011), a
+generic loading UI, error UI, empty-state component, and a toast/
+feedback mechanism, responsive behavior, and accessibility basics.
+Route placeholders for Dashboard/Projects/Jobs/Records/Schedules/
+Settings — no business forms yet, that's explicitly out of scope here.
+Literal acceptance criterion: every navigation item has a route and a
+placeholder state.
 
 ## Not yet in scope
 

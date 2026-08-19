@@ -20,3 +20,4 @@ class AuditAction(StrEnum):
     JOB_PAUSED = "job.paused"
     JOB_RESUMED = "job.resumed"
     JOB_RETRIED = "job.retried"
+    JOB_RECOVERED = "job.recovered"

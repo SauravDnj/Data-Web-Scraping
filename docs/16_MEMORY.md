@@ -69,13 +69,13 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T065 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T070 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060-T064 complete — Phase 4 Provider and Phase 5 Data
-pipeline both fully done, Phase 6 Worker in progress (T065 is its last
-task). T012/T013 prepared but NOT verified — see below. See the dated
-sections further down for detail; this header is not updated inline
-each time, check docs/17_CURRENT_WORK.md for the authoritative
+T050-T055, and T060-T065 complete — Phase 4 Provider, Phase 5 Data
+pipeline, and Phase 6 Worker are all now fully done; Phase 7 Frontend
+starts next. T012/T013 prepared but NOT verified — see below. See the
+dated sections further down for detail; this header is not updated
+inline each time, check docs/17_CURRENT_WORK.md for the authoritative
 up-to-the-minute status.)
 
 ## T027 — the real hard stop
@@ -1788,6 +1788,95 @@ out separately so it doesn't read as a hidden functional change.
 Verified locally: 436 passed, 1 skipped (T012-gated), ruff clean
 across all three Python trees, mypy clean (80 files in `apps/api`; 10
 files via the separate `workers/pyproject.toml` mypy invocation).
+
+## Worker recovery (T065) — current task now T070, Phase 6 (Worker) now complete
+
+`workers/jobs/recovery.py` (new, per `docs/25_WORKER_FILE_PLAN.md`):
+`recover_stale_job_runs()` — closes out job runs a crashed worker
+abandoned. **Built almost entirely by composing already-existing
+pieces rather than new machinery**: T062's `find_stale_job_runs()`
+(detection, existed but had zero callers until now) + T063's
+`retry_failed_job()` (retryability/bounded-attempt/requeue decision,
+also reused verbatim). The only genuinely new logic is safely
+reclaiming a stale `JobRun` and turning it into a real `FAILED` `Job`
+outcome, since `retry_job()` (T035) requires `FAILED` to act on and a
+crashed worker's job is still sitting at `RUNNING`.
+
+**New `JobRepository.close_stale_run()`**: same atomic conditional-
+`UPDATE ... WHERE status='running' AND heartbeat_at < stale_before`
+shape as `claim_queued_job()` (T061) and `request_cancellation()`
+(T064) — re-verifies staleness at the moment of the write (not just at
+listing time), so a run whose worker wrote a fresh heartbeat in
+between is left untouched, and two racing recovery sweeps can never
+both win the same run.
+
+**New error code, same pattern as `"persistence"` (T044)**:
+`app.domain.job_errors.WORKER_CRASHED_ERROR_CODE = "worker_crashed"`
+— non-provider, always-retryable (a crash is an infrastructure
+failure, not a policy rejection), added to
+`_NON_PROVIDER_RETRYABLE_CODES` alongside `"persistence"` (also
+promoted to a named `PERSISTENCE_ERROR_CODE` constant while there, not
+just a bare string in a set). New `AuditAction.JOB_RECOVERED =
+"job.recovered"`, recorded with `actor_user_id=None` (a system
+process, not a human) — `AuditService.record_event()` already
+supported a nullable actor, unused by any caller until now.
+
+**Item 6, "ensure only one active execution owner exists" — the
+honest, bounded answer this codebase's actual tools support, not a
+claim of perfect exactly-once execution**: heartbeat-based liveness
+has an inherent false-positive risk (a merely-slow worker can look
+dead) that only a real distributed lock or fencing-token protocol
+could fully close, and nothing in this codebase has ever built one
+(out of scope everywhere — Redis is coordination-only, per this file's
+own "Queue decision"). Three independent, already-existing safeguards
+combine instead: (1) `close_stale_run()`'s atomic re-verification
+above; (2) `finalize_job()`'s own `transition()` call — if the
+"dead" worker was actually still alive, its own finalize call either
+already landed a real terminal status first or raises
+`InvalidJobTransition`, which recovery catches and treats as "someone
+else already decided this job's outcome," never overriding it; (3) a
+retry always creates a **new** `Job` row (T035, unchanged), so even in
+the worst case there's no shared mutable counter for two executions to
+corrupt together, and any duplicate *record* that scenario could still
+produce collapses back into one row anyway via T053/T054's existing
+dedup-by-`canonical_key`. Documented as a deliberate, bounded scope
+decision, same spirit as T063's un-enforced backoff delay — not
+silently claimed as more than it is.
+
+**Flagged, not built**: `workers/worker_main.py`'s main loop is still
+T015's placeholder — no task from T061 through T065 has ever wired
+`process_next_job()` OR `recover_stale_job_runs()` into a real,
+continuously-running loop; both are only ever called directly (by
+tests, or whatever calls them next). No task prompt through T065 asks
+for that wiring explicitly; `docs/00_TASK_INDEX.md`'s T091
+("Reliability review... test worker crash") is the first task that
+reads as depending on a real loop actually running. Recorded here
+loudly (repeats T061/T062/T063/T064's own versions of this note)
+rather than built speculatively, matching T042's "no caller wires this
+up yet" precedent.
+
+10 new tests (`tests/unit/test_recovery.py`): a simulated crash
+recovered end-to-end (stale run → job marked `FAILED` with
+`worker_crashed` → requeued as a new `QUEUED` job → dequeuable → audit
+event recorded), a fresh-heartbeat run never falsely recovered, the
+same stale run recovered twice in a row only recovering once
+(duplicate-delivery/single-owner proof), a job that genuinely finished
+normally just as its run went stale is left untouched (only the
+orphaned run gets closed), and a lineage already at its retry ceiling
+marked failed without being requeued again (reusing T063's own bound).
+
+Verified locally: 441 passed, 1 skipped (T012-gated), ruff clean
+across all three Python trees, mypy clean (80 files in `apps/api`; 11
+files via the separate `workers/pyproject.toml` mypy invocation).
+
+**Phase 6 (Worker) is now fully complete** — T060 (queue) → T061
+(execution) → T062 (heartbeat) → T063 (retry) → T064 (cancellation) →
+T065 (recovery). Every piece is independently tested against SQLite +
+`fakeredis`; the one honestly-documented gap across all six is that
+none of them are wired into a real running process yet
+(`workers/worker_main.py` still a placeholder) — first genuinely
+required by T091 (Reliability review) or whichever operations task
+turns this into a real daemon.
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

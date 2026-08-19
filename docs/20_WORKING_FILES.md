@@ -7,17 +7,27 @@ being changed.
 
 ## Active task
 
-T065 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T064 complete; T027 PARTIAL — see
+T070 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T065 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
-action; T013's local-testing gap mitigated via `fakeredis`). Phase 4
-(Provider) and Phase 5 (Data pipeline) both fully complete. Phase 6
-(Worker) in progress — T065 is its last task.
+action; T013's local-testing gap mitigated via `fakeredis`). Phases 4
+(Provider), 5 (Data pipeline), and 6 (Worker) are all now fully
+complete. Phase 7 (Frontend) starts here.
 
 ## Active files
 
 ``` text
-None yet — T065 has not started.
+None yet — T070 has not started.
+```
+
+## T065 files (complete — for reference)
+
+``` text
+workers/jobs/recovery.py                         (new)
+apps/api/app/repositories/jobs.py                  (modified — close_stale_run added)
+apps/api/app/domain/job_errors.py                  (modified — PERSISTENCE_ERROR_CODE/WORKER_CRASHED_ERROR_CODE)
+apps/api/app/domain/audit_actions.py               (modified — JOB_RECOVERED added)
+tests/unit/test_recovery.py                        (new)
 ```
 
 ## T064 files (complete — for reference)

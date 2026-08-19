@@ -15,30 +15,32 @@ tests: 0% V1: 0%
   3 Backend            IN_PROGRESS        85%
   4 Provider           COMPLETE          100%
   5 Data pipeline      COMPLETE          100%
-  6 Worker             IN_PROGRESS        83%
-  7 Frontend           PENDING             0%
+  6 Worker             COMPLETE          100%
+  7 Frontend           IN_PROGRESS         0%
   8 Operations         PENDING             0%
   9 Quality            PENDING             0%
   10 Release           PENDING             0%
 
 ## Current task
 
-T065 --- Worker recovery. (T027 PARTIAL, T012 still open; T013 partly
-mitigated for testing via `fakeredis`, see docs/16_MEMORY.md.)
+T070 --- Next.js app shell, Phase 7 (Frontend) started. (T027 PARTIAL,
+T012 still open; T013 partly mitigated for testing via `fakeredis`,
+see docs/16_MEMORY.md.)
 
 ## Last verified milestone
 
-T064 --- Cancellation complete and verified (436 passed, 1 skipped as
-expected), still no live MySQL/Redis needed. New
-`cancel_requested`/`cancel_requested_at` job columns; reconciled a
-real pre-existing bug in T035's `JobService.cancel_job()` (it
-hard-transitioned a `RUNNING` job's status directly, which could race
-the worker's own `finalize_job()` call and leave an
-`InvalidJobTransition` crash waiting to happen). Cancellation is now
-immediate for DRAFT/QUEUED/PAUSED and cooperative (request-flag,
-worker-observed between items) for RUNNING. T063 --- Retry system,
-T062 --- Worker heartbeat, and T061 --- Worker job execution ("the
-first major vertical slice") complete before it.
+T065 --- Worker recovery complete and verified (441 passed, 1 skipped
+as expected), still no live MySQL/Redis needed. New
+`workers/jobs/recovery.py` closes out stale job runs by composing
+T062's stale-run detection with T063's bounded retry, with a new
+atomic `JobRepository.close_stale_run()` for safe reclaiming.
+"Single active execution owner" answered via three combined existing
+safeguards rather than a new distributed lock, explicitly documented
+as bounded rather than a claim of perfect exactly-once execution.
+**Phase 6 (Worker) is now fully complete** — T060 (queue) through T065
+(recovery), all independently tested against SQLite + `fakeredis`;
+`workers/worker_main.py`'s real run loop remains an open, flagged gap
+no task through T065 has asked for.
 
 ## Rule
 

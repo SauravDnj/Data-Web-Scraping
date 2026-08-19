@@ -129,7 +129,13 @@
         cooperative request-flag for RUNNING; reconciled a real
         pre-existing race in T035's `cancel_job()` — see
         docs/16_MEMORY.md)
--   [ ] T065 worker recovery
+-   [x] T065 worker recovery (`workers/jobs/recovery.py` —
+        `recover_stale_job_runs()`, composed from T062's stale-run
+        detection + T063's bounded retry; new atomic
+        `JobRepository.close_stale_run()`; single-owner guarantee via
+        three combined existing safeguards, documented as bounded not
+        perfect exactly-once — see docs/16_MEMORY.md). **Phase 6
+        (Worker) fully complete.**
 -   [ ] T070--T078 frontend
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality
