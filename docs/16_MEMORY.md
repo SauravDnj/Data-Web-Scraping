@@ -69,14 +69,14 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T070 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T071 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, and T060-T065 complete — Phase 4 Provider, Phase 5 Data
-pipeline, and Phase 6 Worker are all now fully done; Phase 7 Frontend
-starts next. T012/T013 prepared but NOT verified — see below. See the
-dated sections further down for detail; this header is not updated
-inline each time, check docs/17_CURRENT_WORK.md for the authoritative
-up-to-the-minute status.)
+T050-T055, T060-T065, and T070 complete — Phase 4 Provider, Phase 5
+Data pipeline, and Phase 6 Worker are all fully done; Phase 7 Frontend
+started with the app shell. T012/T013 prepared but NOT verified — see
+below. See the dated sections further down for detail; this header is
+not updated inline each time, check docs/17_CURRENT_WORK.md for the
+authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1877,6 +1877,117 @@ none of them are wired into a real running process yet
 (`workers/worker_main.py` still a placeholder) — first genuinely
 required by T091 (Reliability review) or whichever operations task
 turns this into a real daemon.
+
+## Next.js app shell (T070) — current task now T071, Phase 7 (Frontend) started
+
+Built the auth-aware dashboard shell: `app/(app)/layout.tsx` (sidebar +
+top nav + auth guard), `app/login/page.tsx`, and placeholder pages for
+Dashboard/Projects/Jobs/Records/Schedules/Settings — matching T070's
+literal acceptance criterion ("every navigation item has a route and
+placeholder state"). Real business content (dashboard metrics,
+project/job/record lists) is explicitly out of scope here — T071-T078
+own those individually.
+
+**A real, consequential design decision this task had to make, with
+no dedicated task or doc pinning it down anywhere in the task list**:
+T070's own IMPLEMENT list names "Auth-aware layout" (item 4), but no
+task from T070 through T078 ever builds a login screen, and nothing
+in `docs/06_UI_DEEP.md` mentions one — the page tree starts directly
+at the dashboard as if a session already exists. Without *some* login
+UI, "auth-aware" could never actually be exercised or tested, so this
+task built a minimal one (`components/auth/LoginForm.tsx`) as the
+necessary minimum, not a "detailed business form" (which the prompt's
+own item 26 says to defer) — two fields, one submit action, one error
+state.
+
+**Where the session token lives — researched before choosing, not
+guessed**: `apps/api/app/api/v1/auth.py` (T038) issues a bearer token
+in the response body, not a cookie, and `apps/api/app/main.py`
+already configures `CORSMiddleware` for a specific `frontend_origin`
+— both signal the intended architecture is the browser calling the
+API directly, not a Next.js server-side proxy/BFF. `lib/api/client.ts`
+(`apiFetch`, built at T011) already existed and is exactly the shape
+that direct-browser-call architecture needs. Building a separate
+cookie-based Server Actions/Route Handler proxy instead would have
+meant inventing a second, parallel architecture the backend was never
+set up for — same "check what's already there before building
+something new" discipline as T063/T064's reconciliation work. Decided:
+`lib/auth/AuthContext.tsx` (`AuthProvider`/`useAuth`), token kept in
+`sessionStorage` (survives a refresh, unlike memory-only; clears on
+tab close, unlike `localStorage`) via `lib/auth/storage.ts`. Documented
+directly in `storage.ts`'s own module docstring, including the
+accepted trade-off (readable by any script on the page, like any
+`sessionStorage`-based token store — a future hardening candidate for
+T090, Security review, not built speculatively now).
+
+**A real bug found and fixed in T011's existing `apiFetch`**: it
+unconditionally called `response.json()`, which throws on a 204 (no
+body) response — exactly what `POST /auth/logout` (T038) returns. Any
+future caller hitting a 204 endpoint would have hit this. Fixed with
+an explicit `response.status === 204` short-circuit returning
+`undefined`; covered by a new regression test
+(`__tests__/api-client.test.ts`).
+
+**A real, separate gap found and fixed in the test setup itself**:
+`vitest.config.mts` never sets `test.globals`, so
+`@testing-library/react`'s automatic per-test DOM cleanup (which
+detects a global `afterEach`) never registered — the very first test
+file in this task with more than one `render()` per file
+(`Sidebar.test.tsx`) failed with "multiple elements found," a stale
+DOM leaking from a prior test in the same file. Fixed centrally in
+`vitest.setup.ts` (`afterEach(() => cleanup())`) rather than adding
+per-file boilerplate — this affects every future test file, not just
+this task's own new ones.
+
+**A real, but constrained, `react-hooks/set-state-in-effect`
+lint finding**: `AuthProvider`'s mount check originally called
+`setStatus("unauthenticated")` synchronously inside its effect body
+for the no-stored-token case. Fixed by moving that determination into
+`useState`'s lazy initializer instead (`readStoredToken() ? "loading"
+: "unauthenticated"`) — the accepted trade-off, documented in the
+component itself, is a possible hydration-mismatch warning for a
+returning already-signed-in visitor (the server has no access to
+`sessionStorage`), which React resolves by taking the client's value
+rather than failing; the same trade-off effectively every
+client-storage-backed auth check in the Next.js ecosystem makes.
+
+**Verified beyond lint/typecheck/unit tests, given the standing "use
+the feature in a browser" instruction**: the Claude-in-Chrome browser
+extension was not connected in this environment (confirmed via a
+direct connection attempt, not assumed), so no interactive click-
+through happened — recorded honestly rather than claimed. Instead: ran
+a real `apps/api` dev server (`uvicorn`) against a scratch,
+freshly-migrated SQLite DB with one seeded user (bcrypt-hashed via
+`app.core.security.hash_password`, the same helper the real signup
+path would use), and curled the exact three endpoints the frontend
+calls (`POST /auth/login`, `GET /auth/me` with the issued bearer
+token, `POST /auth/logout`) — all three behaved exactly as
+`AuthContext.tsx` expects, including the 204-on-logout case the
+`apiFetch` fix above addresses. Also ran a real `next dev` server
+(discovered it silently fell back to port 3001 — port 3000 was
+already held by an unrelated project on this machine, worth knowing
+for any future session on this machine) and curled every route
+(`/`, `/login`, `/dashboard`, `/projects`, `/jobs`, `/records`,
+`/schedules`, `/settings`, and a nonexistent path) — all returned the
+expected status codes with no server-side rendering errors in the dev
+log. What remains unverified: the actual client-side interactive
+behavior (mobile nav drawer open/close, the auth-guard's redirect
+firing in a real browser tab, visual layout at different viewport
+widths) — genuinely not confirmed, flagged rather than assumed.
+
+12 new tests across `__tests__/`, plus the pre-existing root-route
+test rewritten for its new redirect behavior: `apiFetch`'s envelope/
+error/204 handling, `EmptyState`/`ErrorState`/`Toast` behavior,
+`Sidebar`'s active-link logic, and an end-to-end `LoginForm` test
+(real `AuthProvider`/`ToastProvider`, mocked `fetch`/`next/navigation`)
+covering both the successful-login-redirect and the
+same-message-invalid-credentials paths.
+
+Verified locally: `npm run lint`/`typecheck`/`test` (14 passed, 0
+failed, up from 2 pre-existing) all clean, `npm run build` succeeds
+and statically generates all 8 routes (`Route (app)` output lists `/`,
+`/dashboard`, `/jobs`, `/login`, `/projects`, `/records`, `/schedules`,
+`/settings`, `/_not-found`).
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

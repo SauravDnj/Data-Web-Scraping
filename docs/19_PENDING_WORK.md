@@ -136,7 +136,16 @@
         three combined existing safeguards, documented as bounded not
         perfect exactly-once — see docs/16_MEMORY.md). **Phase 6
         (Worker) fully complete.**
--   [ ] T070--T078 frontend
+-   [x] T070 Next.js app shell (auth-aware shell, sidebar/top nav,
+        6 placeholder route pages, `EmptyState`/`ErrorState`/`Toast`,
+        a minimal `/login` page — no dedicated task owns login
+        anywhere in the docs, built as the necessary minimum for
+        "auth-aware layout" to mean anything; session token in
+        `sessionStorage`, browser calls the backend directly — see
+        docs/16_MEMORY.md)
+-   [ ] T071--T078 frontend (T071 likely needs new backend HTTP
+        routes for jobs/records/projects first — none exist yet
+        beyond `/api/v1/auth/*`, see docs/17_CURRENT_WORK.md)
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality
 -   [ ] T100--T103 release

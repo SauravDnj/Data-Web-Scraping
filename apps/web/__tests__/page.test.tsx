@@ -1,10 +1,10 @@
-import { expect, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { expect, test, vi } from "vitest";
 import Page from "../app/page";
 
-test("home page renders the product name", () => {
-  render(<Page />);
-  expect(
-    screen.getByRole("heading", { level: 1, name: /google maps data platform/i }),
-  ).toBeInTheDocument();
+const redirect = vi.fn();
+vi.mock("next/navigation", () => ({ redirect: (path: string) => redirect(path) }));
+
+test("the root route redirects into the app rather than rendering content", () => {
+  Page();
+  expect(redirect).toHaveBeenCalledWith("/dashboard");
 });

@@ -1591,3 +1591,102 @@ state, auth-aware layout, loading/error/empty-state UI, toast
 mechanism, responsive behavior, accessibility basics — placeholder
 pages for Dashboard/Projects/Jobs/Records/Schedules/Settings; no
 business forms yet). Phase 7 (Frontend) begins.
+
+### T070 --- Next.js app shell
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/(app)/layout.tsx`: the auth-aware shell (item 4) — a client
+    component gating on `useAuth().status`, redirecting to `/login`
+    when unauthenticated, showing a neutral loading state while a
+    stored token is being validated (never flashing shell content
+    then yanking the user away). `components/layout/{Sidebar,TopNav}.tsx`:
+    active-route highlighting (`usePathname`), a mobile drawer with a
+    scrim + hamburger toggle (item 9, responsive behavior),
+    `aria-current="page"`/`aria-label` usage throughout (item 10).
+    Placeholder pages for all 6 top-level routes
+    (Dashboard/Projects/Jobs/Records/Schedules/Settings), each using
+    the new `EmptyState` component — matching T070's literal
+    acceptance criterion exactly.
+-   `components/feedback/{EmptyState,ErrorState,Toast}.tsx`: the
+    generic loading/error/empty-state/feedback primitives items 5-8
+    ask for. `ErrorState` follows `docs/06_UI_DEEP.md`'s literal spec
+    (what failed, whether it's retryable, the recommended next
+    action — never a raw stack trace). `ToastProvider`/`useToast` is
+    app-wide, mounted once in the root layout, auto-dismissing after
+    5s.
+-   **A real, necessary design decision with no dedicated task or doc
+    backing it anywhere in `docs/00_TASK_INDEX.md`**: T070 requires
+    "auth-aware layout," but no task from T070 through T078 ever
+    builds a login screen, and `docs/06_UI_DEEP.md`'s page tree starts
+    directly at the dashboard as if a session already exists. Built
+    the minimum necessary UI to make auth-awareness real and testable
+    (`app/login/page.tsx` + `components/auth/LoginForm.tsx`) rather
+    than skip it — two fields, one submit action, one error state, not
+    the "detailed business form" the prompt's own item 26 defers.
+-   **Session architecture researched from the existing backend, not
+    invented from scratch**: `apps/api/app/api/v1/auth.py` (T038)
+    issues a bearer token in the response body (no cookie), and
+    `apps/api/app/main.py` already configures CORS for a specific
+    `frontend_origin` — signaling the browser was meant to call the
+    API directly. `lib/api/client.ts`'s `apiFetch` (T011) already
+    existed for exactly that. Built `lib/auth/AuthContext.tsx` +
+    `lib/auth/storage.ts` (token in `sessionStorage`, documented
+    trade-off vs. `localStorage`/memory-only, right in the module's
+    own docstring) on top of it, rather than inventing a parallel
+    server-side cookie/proxy architecture the backend was never set
+    up for.
+-   **Found and fixed a real bug in T011's existing `apiFetch`**: it
+    unconditionally parsed every response as JSON, which throws on a
+    204 (no body) response — exactly what `POST /auth/logout` (T038)
+    returns. Fixed with an explicit 204 short-circuit; covered by a
+    new regression test.
+-   **Found and fixed a real gap in the test setup itself**:
+    `vitest.config.mts` never sets `test.globals`, so
+    `@testing-library/react`'s automatic per-test DOM cleanup never
+    registered — invisible until this task's first multi-render test
+    file, which failed with a stale DOM leaking across tests. Fixed
+    centrally in `vitest.setup.ts`, benefiting every future test file.
+-   **A real `react-hooks/set-state-in-effect` lint finding**, fixed
+    by moving `AuthProvider`'s "no stored token" determination into a
+    `useState` lazy initializer instead of a synchronous effect-body
+    `setState` call — the accepted, documented trade-off is a possible
+    hydration-mismatch warning for a returning already-signed-in
+    visitor (server has no `sessionStorage` access), which React
+    resolves by using the client's value.
+-   **Verification beyond lint/typecheck/tests, honestly bounded**:
+    the Claude-in-Chrome browser extension was not connected in this
+    environment (a real connection attempt was made, not assumed
+    unavailable) — no interactive click-through happened. Instead: a
+    real `uvicorn` backend was run against a scratch, freshly-migrated
+    SQLite DB with one seeded user, and the exact 3 endpoints the
+    frontend calls (`POST /auth/login`, `GET /auth/me`,
+    `POST /auth/logout`) were curled directly and matched the
+    frontend's expectations exactly, including the 204 case the
+    `apiFetch` fix addresses. A real `next dev` server was also run and
+    every route curled (all returned expected status codes, no
+    server-side render errors in the dev log). What was NOT verified:
+    actual interactive behavior in a real browser (mobile drawer
+    open/close, the live auth-guard redirect, responsive layout at
+    different widths) — recorded as genuinely unverified, not claimed.
+-   12 new tests (root-route redirect rewritten;
+    `apiFetch` envelope/error/204 handling; `EmptyState`/`ErrorState`/
+    `Toast` behavior; `Sidebar` active-link logic; an end-to-end
+    `LoginForm` test against a real `AuthProvider`/`ToastProvider`
+    with mocked `fetch`, covering both the successful-login-redirect
+    and the same-message-invalid-credentials paths).
+-   Verified locally: `npm run lint`/`typecheck`/`test` all clean (14
+    passed, up from 2 pre-existing), `npm run build` succeeds and
+    statically generates all 8 routes.
+
+**Phase 7 (Frontend) started.**
+
+Next: T071 --- Dashboard UI (active/completed/failed job cards, records
+count, recent-jobs/recent-failures lists, loading/empty/error states,
+retry actions; backend metrics authoritative, never computed from
+partial frontend data). Likely needs new backend HTTP routes for
+jobs/records/projects first — none exist yet beyond `/api/v1/auth/*`
+(flagged by T039's own memory entry, confirmed still true) — confirm
+this reading of scope before starting.

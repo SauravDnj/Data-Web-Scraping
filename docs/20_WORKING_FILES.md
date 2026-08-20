@@ -7,17 +7,51 @@ being changed.
 
 ## Active task
 
-T070 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T065 complete; T027 PARTIAL — see
+T071 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T065, T070 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phases 4
-(Provider), 5 (Data pipeline), and 6 (Worker) are all now fully
-complete. Phase 7 (Frontend) starts here.
+(Provider), 5 (Data pipeline), and 6 (Worker) are all fully complete.
+Phase 7 (Frontend) started with the app shell.
 
 ## Active files
 
 ``` text
-None yet — T070 has not started.
+None yet — T071 has not started.
+```
+
+## T070 files (complete — for reference)
+
+``` text
+apps/web/lib/auth/storage.ts                        (new)
+apps/web/lib/auth/AuthContext.tsx                    (new)
+apps/web/lib/api/client.ts                           (modified — 204 response handling fixed)
+apps/web/components/ui/Button.tsx                    (new)
+apps/web/components/feedback/EmptyState.tsx          (new)
+apps/web/components/feedback/ErrorState.tsx          (new)
+apps/web/components/feedback/Toast.tsx               (new)
+apps/web/components/layout/nav-items.ts              (new)
+apps/web/components/layout/Sidebar.tsx               (new)
+apps/web/components/layout/TopNav.tsx                (new)
+apps/web/components/auth/LoginForm.tsx                (new)
+apps/web/app/layout.tsx                              (modified — AuthProvider/ToastProvider wired in)
+apps/web/app/page.tsx                                (modified — redirects to /dashboard)
+apps/web/app/login/page.tsx                           (new)
+apps/web/app/(app)/layout.tsx                         (new — auth-guarded shell)
+apps/web/app/(app)/dashboard/page.tsx                 (new, placeholder)
+apps/web/app/(app)/projects/page.tsx                  (new, placeholder)
+apps/web/app/(app)/jobs/page.tsx                      (new, placeholder)
+apps/web/app/(app)/records/page.tsx                   (new, placeholder)
+apps/web/app/(app)/schedules/page.tsx                 (new, placeholder)
+apps/web/app/(app)/settings/page.tsx                  (new)
+apps/web/vitest.setup.ts                              (modified — RTL auto-cleanup registered)
+apps/web/__tests__/page.test.tsx                      (modified — new redirect behavior)
+apps/web/__tests__/api-client.test.ts                 (new)
+apps/web/__tests__/components/EmptyState.test.tsx     (new)
+apps/web/__tests__/components/ErrorState.test.tsx     (new)
+apps/web/__tests__/components/Toast.test.tsx          (new)
+apps/web/__tests__/components/Sidebar.test.tsx        (new)
+apps/web/__tests__/components/LoginForm.test.tsx      (new)
 ```
 
 ## T065 files (complete — for reference)

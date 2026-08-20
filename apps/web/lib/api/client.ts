@@ -31,6 +31,15 @@ export async function apiFetch<T>(
     },
   });
 
+  // A 204 (e.g. POST /auth/logout) has no body at all — parsing it as
+  // JSON would throw. Every other response, success or error, uses
+  // the envelope shape and is safe to parse. (204 is always a success
+  // status per the Fetch spec, so there is no error case to handle
+  // here.)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const body = (await response.json()) as ApiEnvelope<T> | ApiErrorEnvelope;
 
   if (!response.ok || "error" in body) {
