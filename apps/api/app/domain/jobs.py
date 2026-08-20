@@ -90,3 +90,21 @@ class JobRun:
     def __post_init__(self) -> None:
         if self.attempt < 1:
             raise ValueError("attempt must be >= 1.")
+
+
+@dataclass(frozen=True)
+class JobStatusSummary:
+    """T071 (Dashboard UI) — the exact 3 buckets `docs/06_UI_DEEP.md`'s
+    dashboard cards need, pre-computed server-side (never left for the
+    frontend to derive from a page of partial results, per T071's own
+    DO NOT rule). `active` = QUEUED + RUNNING + PAUSED (not yet in a
+    terminal state); `completed` = COMPLETED + PARTIALLY_COMPLETED (it
+    did finish, whether or not every unit succeeded); `failed` =
+    FAILED. CANCELLED is deliberately not represented in any of these
+    three cards — docs/06 lists exactly three, and a cancelled job is
+    neither "active" nor a completion nor a failure in the sense those
+    cards mean."""
+
+    active_jobs: int = 0
+    completed_jobs: int = 0
+    failed_jobs: int = 0

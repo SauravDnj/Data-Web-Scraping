@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 from typing import Protocol, cast
 
-from sqlalchemy import CursorResult, select, update
+from sqlalchemy import CursorResult, func, select, update
 
 from app.db.models import Job as JobRow
 from app.db.models import JobRun as JobRunRow
+from app.db.models import Project as ProjectRow
 from app.domain.job_state_machine import transition
 from app.domain.jobs import Job, JobCounters, JobRun, JobRunStatus, JobStatus
 from app.repositories.base import DEFAULT_PAGE_LIMIT, Page, SqlAlchemyRepository
@@ -51,6 +52,17 @@ class JobRepository(Protocol):
     def list_queued_or_running(
         self, *, limit: int = DEFAULT_PAGE_LIMIT, offset: int = 0
     ) -> Page[Job]: ...
+
+    def list_for_user(
+        self,
+        user_id: int,
+        *,
+        status: JobStatus | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> Page[Job]: ...
+
+    def count_by_status_for_user(self, user_id: int) -> dict[JobStatus, int]: ...
 
     def create_run(self, run: JobRun) -> JobRun: ...
 
@@ -270,6 +282,44 @@ class SqlAlchemyJobRepository(SqlAlchemyRepository[JobRow, Job]):
             .order_by(JobRow.requested_at.asc())
         )
         return self._paginate(statement, limit=limit, offset=offset)
+
+    def list_for_user(
+        self,
+        user_id: int,
+        *,
+        status: JobStatus | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> Page[Job]:
+        """T071 — cross-project, matching `GET /jobs`
+        (docs/05_API_DESIGN.md). A `Job` has no `user_id` of its own,
+        so this joins through `projects` the same way authorization
+        already does everywhere else (`ProjectService._require_owner`)
+        — filtering by that join IS the authorization boundary here,
+        no separate ownership check needed the way single-job lookups
+        require one."""
+        statement = (
+            select(JobRow)
+            .join(ProjectRow, ProjectRow.id == JobRow.project_id)
+            .where(ProjectRow.user_id == user_id)
+        )
+        if status is not None:
+            statement = statement.where(JobRow.status == status)
+        statement = statement.order_by(JobRow.requested_at.desc())
+        return self._paginate(statement, limit=limit, offset=offset)
+
+    def count_by_status_for_user(self, user_id: int) -> dict[JobStatus, int]:
+        """T071 — the real `GROUP BY` behind `JobService.
+        summarize_for_user()`'s dashboard cards. A real SQL aggregate,
+        not a client-side sum of a paginated list (T071's own DO NOT
+        rule) — every job counts here regardless of how many exist."""
+        rows = self._session.execute(
+            select(JobRow.status, func.count())
+            .join(ProjectRow, ProjectRow.id == JobRow.project_id)
+            .where(ProjectRow.user_id == user_id)
+            .group_by(JobRow.status)
+        ).all()
+        return {JobStatus(status): count for status, count in rows}
 
     def _run_to_domain(self, row: JobRunRow) -> JobRun:
         return JobRun(

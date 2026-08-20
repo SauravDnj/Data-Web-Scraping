@@ -69,14 +69,16 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T071 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T072 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, T060-T065, and T070 complete — Phase 4 Provider, Phase 5
-Data pipeline, and Phase 6 Worker are all fully done; Phase 7 Frontend
-started with the app shell. T012/T013 prepared but NOT verified — see
-below. See the dated sections further down for detail; this header is
-not updated inline each time, check docs/17_CURRENT_WORK.md for the
-authoritative up-to-the-minute status.)
+T050-T055, T060-T065, T070, and T071 complete — Phase 4 Provider,
+Phase 5 Data pipeline, and Phase 6 Worker are all fully done; Phase 7
+Frontend has the app shell and dashboard. First backend HTTP routes
+beyond auth now exist: `GET /jobs`, `GET /jobs/summary`,
+`GET /records/count` (T071). T012/T013 prepared but NOT verified —
+see below. See the dated sections further down for detail; this
+header is not updated inline each time, check docs/17_CURRENT_WORK.md
+for the authoritative up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -1988,6 +1990,113 @@ failed, up from 2 pre-existing) all clean, `npm run build` succeeds
 and statically generates all 8 routes (`Route (app)` output lists `/`,
 `/dashboard`, `/jobs`, `/login`, `/projects`, `/records`, `/schedules`,
 `/settings`, `/_not-found`).
+
+## Dashboard UI (T071) — current task now T072
+
+Built the real dashboard (`app/(app)/dashboard/page.tsx`): 4 cards
+(Active/Completed/Failed Jobs, Records — docs/06_UI_DEEP.md's exact
+spec), a recent-activity table, a recent-failures table, loading/
+empty/error states with a retry action. Every number is read straight
+from a backend response field, never derived client-side from a page
+of partial results — T071's own explicit DO NOT rule.
+
+**The real, structural blocker flagged at the end of T070, confirmed
+and resolved**: "API-backed metrics" had nothing to call —
+`/api/v1/auth/*` (T038) was the only mounted router anywhere in
+`apps/api`. Built the minimal backend surface T071 actually needs,
+matching `docs/05_API_DESIGN.md`'s own endpoint list where it already
+existed (`GET /jobs`, cross-project) and adding one small, justified,
+undocumented-but-consistent addition where the design doc was silent
+(`GET /jobs/summary`, `GET /records/count`) — not the full CRUD/action
+surface for jobs or records, which stays T074's (Job UI) and T075's
+(Records UI) job respectively; T071 only needed list + summary/count.
+
+**First business routes beyond auth — real dependency-injection
+plumbing had to be built, not just two thin route functions**:
+`app/api/dependencies.py` gained `get_audit_service`/
+`get_project_service`/`get_configuration_service`/`get_job_service`/
+`get_record_service`, each a thin factory composing the same
+repository/service graph already tested at T032-T037, wired to the
+request-scoped `get_db` session (T020) exactly like `get_auth_service`
+already did. `get_configuration_service` constructs a real
+`GoogleMapsConfigValidator(settings.google_maps_api_key)` — V1's only
+supported provider, same single-validator assumption
+`ConfigurationService` has had since T034 (no `ProviderRegistry`
+exists, T040's memory entry already explains why).
+
+**Cross-project aggregation needed a real SQL join, not N+1 queries or
+a paginated-list sum**: `Job`/`Record` have no `user_id` of their own
+— only `project_id`. New `JobRepository.list_for_user()`/
+`count_by_status_for_user()` and `RecordRepository.count_for_user()`
+all join through `projects` (`WHERE projects.user_id = ?`), the same
+authorization-via-join principle every existing service already uses
+for single-entity ownership checks, just applied at aggregate scale
+here. `count_by_status_for_user()` is a real `GROUP BY`;
+`Page.total` (used by `list_for_user()`) was already a genuine
+`COUNT(*)` from T032's `_paginate()` — so "backend metrics are
+authoritative" was actually already true of the pagination primitive
+itself, this task just had to expose it.
+
+**A real design decision, no doc pinned it down**: which `JobStatus`
+values land in which of the 3 dashboard cards. New
+`app.domain.jobs.JobStatusSummary` documents the decision inline:
+`active` = QUEUED+RUNNING+PAUSED (not yet terminal); `completed` =
+COMPLETED+PARTIALLY_COMPLETED (it finished, whether or not every unit
+succeeded); `failed` = FAILED. `CANCELLED` deliberately isn't counted
+in any of the three — docs/06 lists exactly three cards, and a
+cancelled job doesn't cleanly belong in any of them.
+
+**"Project" column in the recent-activity table shows `Project #{id}`,
+not a name**: `GET /projects` doesn't exist yet (T072's job) — a
+placeholder was chosen over either skipping the column (docs/06 lists
+it explicitly) or building a projects-list endpoint ahead of the task
+that owns it.
+
+**Fixed a real `react-hooks/set-state-in-effect` finding, same rule
+as T070's `AuthContext` fix but a different, non-obvious resolution**:
+the initial `useEffect(() => { load(); }, [load])` + a separately
+`useCallback`-defined async `load()` shape (a completely standard,
+common React data-fetching pattern) still tripped the lint rule even
+with the synchronous `setState` moved out of `load()`'s first line —
+the rule's static trace flags ANY function invoked from an effect
+whose implementation eventually calls a state setter, regardless of
+being before or after an `await`. Resolved by inlining the fetch
+directly in the effect body with `.then()`/`.catch()` callbacks
+(matching `AuthContext.tsx`'s already-working shape exactly) and using
+a bumped `reloadToken` state dependency to re-trigger the effect for
+manual retry, instead of exposing a callable `load` function. Worth
+remembering for any future data-fetching-on-mount component — the
+"named `useCallback` function called from a bare `useEffect`" pattern
+is not safe under this ruleset even when it looks textbook-correct.
+
+**Real backend endpoints verified against seeded data, not just
+tests**: same scratch-SQLite-plus-`uvicorn` technique as T070, this
+time seeding a project with 2 jobs (one COMPLETED, one QUEUED) and 5
+records, then curling `/jobs/summary` (`active_jobs:1,
+completed_jobs:1, failed_jobs:0` — correct), `/records/count`
+(`5` — correct), and `/jobs`/`/jobs?status=failed` (correct
+items/total) directly — the frontend's exact expected shape, byte for
+byte. The Chrome extension was still unavailable in this environment;
+curled `/dashboard` and `/login` against a real `next dev` server
+(port 3001 again — port 3000 still held by an unrelated project on
+this machine) and confirmed 200s with no server-side render errors,
+but did not visually confirm the rendered cards/tables in a browser —
+flagged, not assumed.
+
+17 new tests: 4 backend repository (cross-project scoping + status
+filtering + status-count aggregation for jobs; cross-project scoping
+for records), 3 backend service (list_for_user, summarize_for_user,
+record count_for_user), 6 backend HTTP (auth-required, empty case,
+cross-user isolation, status filter, summary bucketing, records
+count), 4 frontend (`DashboardPage.test.tsx` — cards render real
+numbers, empty state, populated recent-activity table, error+retry).
+
+Verified locally (backend): 454 passed, 1 skipped (T012-gated), ruff
+clean across all three Python trees, mypy clean (83 files in
+`apps/api`; 11 files via the separate `workers/pyproject.toml`
+invocation). Verified locally (frontend): `npm run
+lint`/`typecheck`/`test` (18 passed, up from 14) all clean, `npm run
+build` succeeds.
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 

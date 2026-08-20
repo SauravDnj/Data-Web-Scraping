@@ -1,10 +1,15 @@
 from fastapi import APIRouter
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.jobs import router as jobs_router
+from app.api.v1.records import router as records_router
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
+router.include_router(jobs_router)
+router.include_router(records_router)
 
-# Remaining business endpoints (projects, configs, jobs, records,
-# exports, schedules) are added by their respective tasks (T070+, not
-# T033-T037 — those built the service layer only, no HTTP routes yet).
+# Remaining business endpoints (projects, configs, exports, schedules)
+# are added by their respective tasks — T071 added just enough of
+# jobs/records (list + summary/count) for the dashboard; full CRUD for
+# both, plus projects/configs/exports/schedules, land at T072+.

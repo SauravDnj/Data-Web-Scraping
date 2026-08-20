@@ -240,3 +240,27 @@ def test_stranger_cannot_search_or_view_another_users_records(session_factory):
             records.search_records(project.id, requesting_user_id=stranger.id)
         with pytest.raises(PermissionDeniedError):
             records.get_record(record_id, requesting_user_id=stranger.id)
+
+
+def test_count_for_user_is_cross_project_and_scoped_to_the_requesting_user(
+    session_factory,
+):
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        project_a = make_project(session, owner.id, name="A")
+        project_b = make_project(session, owner.id, name="B")
+        job_a = make_job(session, project_a.id, _config_id(session, project_a.id))
+        job_b = make_job(session, project_b.id, _config_id(session, project_b.id))
+        _seed_records(session, project_a.id, job_a.id, 3)
+        _seed_records(session, project_b.id, job_b.id, 2)
+
+        stranger_project = make_project(session, stranger.id)
+        stranger_job = make_job(
+            session, stranger_project.id, _config_id(session, stranger_project.id)
+        )
+        _seed_records(session, stranger_project.id, stranger_job.id, 7)
+
+        _projects, records = _make_services(session)
+        assert records.count_for_user(requesting_user_id=owner.id) == 5
+        assert records.count_for_user(requesting_user_id=stranger.id) == 7

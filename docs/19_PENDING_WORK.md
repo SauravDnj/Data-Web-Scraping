@@ -143,9 +143,15 @@
         "auth-aware layout" to mean anything; session token in
         `sessionStorage`, browser calls the backend directly — see
         docs/16_MEMORY.md)
--   [ ] T071--T078 frontend (T071 likely needs new backend HTTP
-        routes for jobs/records/projects first — none exist yet
-        beyond `/api/v1/auth/*`, see docs/17_CURRENT_WORK.md)
+-   [x] T071 Dashboard UI (real dashboard cards/tables wired to new
+        backend routes — `GET /jobs`, `GET /jobs/summary`,
+        `GET /records/count`, the first business HTTP surface beyond
+        auth; new cross-project repository aggregation + FastAPI
+        dependency plumbing reused by future routes — see
+        docs/16_MEMORY.md)
+-   [ ] T072--T078 frontend (T072 will likely need a new `/projects`
+        HTTP route first, same pattern as T071 — see
+        docs/17_CURRENT_WORK.md)
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality
 -   [ ] T100--T103 release

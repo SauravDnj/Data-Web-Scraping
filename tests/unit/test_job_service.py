@@ -295,6 +295,72 @@ def test_get_nonexistent_job_raises_not_found(session_factory):
             jobs.get_job(999_999, requesting_user_id=user.id)
 
 
+def test_list_for_user_is_cross_project_and_scoped_to_the_requesting_user(
+    session_factory,
+):
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        projects, configs, jobs = _make_services(session)
+
+        project_a = _make_project_with_active_config(projects, configs, owner.id)
+        project_b = projects.create_project(
+            user_id=owner.id, name="Second Project", source_type="google_maps"
+        )
+        configs.create_version(
+            project_b.id,
+            requesting_user_id=owner.id,
+            provider="google_maps",
+            config={"query": "tea"},
+        )
+        job_a = jobs.create_job(project_a.id, requesting_user_id=owner.id)
+        job_b = jobs.create_job(project_b.id, requesting_user_id=owner.id)
+
+        stranger_project = _make_project_with_active_config(
+            projects, configs, stranger.id
+        )
+        jobs.create_job(stranger_project.id, requesting_user_id=stranger.id)
+
+        page = jobs.list_for_user(requesting_user_id=owner.id)
+        assert {job.id for job in page.items} == {job_a.id, job_b.id}
+        assert page.total == 2
+
+
+def test_summarize_for_user_buckets_by_the_three_dashboard_statuses(session_factory):
+    with session_scope(session_factory) as session:
+        user = make_user(session)
+        projects, configs, jobs = _make_services(session)
+        project = _make_project_with_active_config(projects, configs, user.id)
+        repo = SqlAlchemyJobRepository(session)
+
+        queued = jobs.create_job(project.id, requesting_user_id=user.id)  # active
+
+        second = jobs.create_job(
+            project.id, requesting_user_id=user.id, idempotency_key="req-2"
+        )
+        repo.update_status(second.id, JobStatus.RUNNING)  # active
+
+        third = jobs.create_job(
+            project.id, requesting_user_id=user.id, idempotency_key="req-3"
+        )
+        repo.update_status(third.id, JobStatus.RUNNING)
+        repo.finalize_job(
+            third.id, status=JobStatus.COMPLETED, finished_at=datetime.now(UTC)
+        )  # completed
+
+        fourth = jobs.create_job(
+            project.id, requesting_user_id=user.id, idempotency_key="req-4"
+        )
+        _fail_job(session, fourth.id, "temporary")  # failed
+
+        summary = jobs.summarize_for_user(requesting_user_id=user.id)
+
+        assert summary.active_jobs == 2
+        assert summary.completed_jobs == 1
+        assert summary.failed_jobs == 1
+        assert queued.status == JobStatus.QUEUED  # sanity: never mutated in place
+
+
 def test_stranger_cannot_act_on_another_users_job(session_factory):
     with session_scope(session_factory) as session:
         owner = make_user(session, email="owner@example.com")

@@ -9,7 +9,8 @@ from datetime import UTC, datetime
 from app.domain.audit_actions import AuditAction
 from app.domain.job_errors import is_retryable
 from app.domain.job_state_machine import TERMINAL_STATUSES
-from app.domain.jobs import Job, JobStatus
+from app.domain.jobs import Job, JobStatus, JobStatusSummary
+from app.repositories.base import DEFAULT_PAGE_LIMIT, Page
 from app.repositories.jobs import JobRepository
 from app.services.audit import AuditService
 from app.services.configs import ConfigurationService
@@ -86,6 +87,39 @@ class JobService:
 
     def get_job(self, job_id: int, *, requesting_user_id: int) -> Job:
         return self._require_owned_job(job_id, requesting_user_id)
+
+    def list_for_user(
+        self,
+        *,
+        requesting_user_id: int,
+        status: JobStatus | None = None,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> Page[Job]:
+        """`GET /jobs` (docs/05_API_DESIGN.md), cross-project. No
+        separate ownership check needed the way `_require_owned_job()`
+        performs for a single job — filtering by `requesting_user_id`
+        at the repository's join IS the authorization boundary here."""
+        return self._jobs.list_for_user(
+            requesting_user_id, status=status, limit=limit, offset=offset
+        )
+
+    def summarize_for_user(self, *, requesting_user_id: int) -> JobStatusSummary:
+        """T071's dashboard cards — see `JobStatusSummary`'s own
+        docstring for exactly which statuses land in which bucket."""
+        counts = self._jobs.count_by_status_for_user(requesting_user_id)
+        return JobStatusSummary(
+            active_jobs=(
+                counts.get(JobStatus.QUEUED, 0)
+                + counts.get(JobStatus.RUNNING, 0)
+                + counts.get(JobStatus.PAUSED, 0)
+            ),
+            completed_jobs=(
+                counts.get(JobStatus.COMPLETED, 0)
+                + counts.get(JobStatus.PARTIALLY_COMPLETED, 0)
+            ),
+            failed_jobs=counts.get(JobStatus.FAILED, 0),
+        )
 
     def cancel_job(self, job_id: int, *, requesting_user_id: int) -> Job:
         """T064: cancellation is immediate for DRAFT/QUEUED/PAUSED (no

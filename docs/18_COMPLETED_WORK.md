@@ -1690,3 +1690,103 @@ partial frontend data). Likely needs new backend HTTP routes for
 jobs/records/projects first — none exist yet beyond `/api/v1/auth/*`
 (flagged by T039's own memory entry, confirmed still true) — confirm
 this reading of scope before starting.
+
+### T071 --- Dashboard UI
+
+Status: COMPLETE
+
+Evidence:
+
+-   `app/(app)/dashboard/page.tsx`: 4 cards (Active/Completed/Failed
+    Jobs, Records — `docs/06_UI_DEEP.md`'s exact spec), a
+    recent-activity table, a recent-failures table, loading/empty/
+    error states with a retry action. Every number comes straight
+    from a backend response field — never derived client-side from a
+    page of partial results, T071's own explicit DO NOT rule.
+-   **Resolved the real blocker flagged at the end of T070**: no
+    business HTTP route existed anywhere beyond `/api/v1/auth/*`.
+    Built the minimal backend surface T071 actually needs: `GET /jobs`
+    (matching `docs/05_API_DESIGN.md`'s own literal endpoint exactly),
+    `GET /jobs/summary` and `GET /records/count` (small, justified
+    additions where the design doc was silent — not the full CRUD/
+    action surface for jobs or records, which stays T074's/T075's
+    job). New `app/api/pagination.py` (`PagedResponse[T]`) is the
+    shared shape every future list route will reuse.
+-   **First business routes beyond auth — the dependency-injection
+    plumbing had to be built for real, not stubbed**:
+    `app/api/dependencies.py` gained `get_audit_service`/
+    `get_project_service`/`get_configuration_service`/
+    `get_job_service`/`get_record_service`, each a thin factory over
+    the exact repository/service graph already tested at T032-T037,
+    wired to the request-scoped `get_db` session the same way
+    `get_auth_service` (T038) already did.
+-   **Cross-project aggregation needed a real SQL join, not N+1
+    queries or a client-side sum**: `Job`/`Record` have no `user_id`
+    of their own. New `JobRepository.list_for_user()`/
+    `count_by_status_for_user()` and `RecordRepository.
+    count_for_user()` all join through `projects`
+    (`WHERE projects.user_id = ?`) — the same authorization-via-join
+    principle every existing single-entity ownership check already
+    uses, applied at aggregate scale. `count_by_status_for_user()` is
+    a real `GROUP BY`; `Page.total` (T032's `_paginate()`) was already
+    a genuine `COUNT(*)`, so "backend metrics are authoritative" was
+    already true of the pagination primitive — this task exposed it.
+-   **A real design decision, no doc pinned it down**: new
+    `app.domain.jobs.JobStatusSummary` documents inline which
+    `JobStatus` values land in which of the 3 dashboard cards —
+    `active` = QUEUED+RUNNING+PAUSED, `completed` =
+    COMPLETED+PARTIALLY_COMPLETED, `failed` = FAILED. `CANCELLED`
+    deliberately isn't counted in any of the three (docs/06 lists
+    exactly three cards; a cancelled job doesn't cleanly belong in
+    any of them).
+-   **"Project" column shows `Project #{id}`, not a name** —
+    `GET /projects` doesn't exist yet (T072's job); a placeholder was
+    chosen over skipping the column entirely or building a
+    projects-list endpoint ahead of the task that owns it.
+-   **A second `react-hooks/set-state-in-effect` finding, needing a
+    different fix than T070's**: the textbook `useEffect(() => {
+    load(); }, [load])` + separately `useCallback`-defined async
+    `load()` pattern still tripped the rule even with the synchronous
+    `setState` moved out of `load()`'s first line — the rule's static
+    trace flags any function called from an effect whose
+    implementation eventually calls a state setter, regardless of
+    `await` timing. Fixed by inlining the fetch directly in the
+    effect body with `.then()`/`.catch()` (matching `AuthContext.tsx`'s
+    already-working shape) and a bumped `reloadToken` state to
+    re-trigger the effect for manual retry, instead of exposing a
+    callable `load` function. Worth remembering for any future
+    data-fetch-on-mount component.
+-   **Verified against real seeded data, not just tests**: same
+    scratch-SQLite-plus-`uvicorn` technique as T070 — seeded a project
+    with 2 jobs (one COMPLETED, one QUEUED) and 5 records, then curled
+    `/jobs/summary` (`active_jobs:1, completed_jobs:1, failed_jobs:0`
+    — correct), `/records/count` (`5` — correct), and
+    `/jobs`/`/jobs?status=failed` (correct items/total) — matching the
+    frontend's exact expected shape. Chrome extension still
+    unavailable in this environment; curled `/dashboard`/`/login`
+    against a real `next dev` server (200s, no server errors) but did
+    NOT visually confirm the rendered cards/tables in a browser —
+    flagged, not assumed.
+-   17 new tests: 4 backend repository (job cross-project scoping +
+    status filter + status-count aggregation; record cross-project
+    scoping), 3 backend service (`list_for_user`/`summarize_for_user`/
+    record `count_for_user`), 6 backend HTTP
+    (`tests/integration/test_dashboard_api.py` — auth-required, empty
+    case, cross-user isolation, status filter, summary bucketing,
+    records count), 4 frontend (`DashboardPage.test.tsx` — cards
+    render real numbers, empty state, populated recent-activity
+    table, error+retry).
+-   Verified locally: backend 454 passed, 1 skipped (T012-gated),
+    ruff clean across all three Python trees, mypy clean (83 files in
+    `apps/api`; 11 files via the separate `workers/pyproject.toml`
+    invocation); frontend `npm run lint`/`typecheck`/`test` (18
+    passed, up from 14) all clean, `npm run build` succeeds.
+
+Next: T072 --- Project UI (project list, search/filter, create/edit/
+archive flows with a confirmation step for archive, project detail
+page, validation feedback, loading/empty/error states, connect to a
+typed API client; a created project must appear immediately in the
+list after a successful API response). Will likely need a new
+`/projects` HTTP route first, same pattern as T071 —
+`get_project_service` already exists in `app/api/dependencies.py`
+(built at T071), reuse it directly.

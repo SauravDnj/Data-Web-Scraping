@@ -34,6 +34,13 @@ class RecordService:
             project_id, filters=filters, sort=sort, limit=limit, offset=offset
         )
 
+    def count_for_user(self, *, requesting_user_id: int) -> int:
+        """T071's dashboard "Records" card. Cross-project, same as
+        `JobService.list_for_user()` — no per-project ownership check
+        needed, the repository's join on `requesting_user_id` already
+        is the authorization boundary."""
+        return self._records.count_for_user(requesting_user_id)
+
     def get_record(self, record_id: int, *, requesting_user_id: int) -> Record:
         record = self._records.get(record_id)
         if record is None:

@@ -7,17 +7,42 @@ being changed.
 
 ## Active task
 
-T071 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T065, T070 complete; T027 PARTIAL — see
+T072 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T065, T070, T071 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phases 4
 (Provider), 5 (Data pipeline), and 6 (Worker) are all fully complete.
-Phase 7 (Frontend) started with the app shell.
+Phase 7 (Frontend) has the app shell and dashboard.
 
 ## Active files
 
 ``` text
-None yet — T071 has not started.
+None yet — T072 has not started.
+```
+
+## T071 files (complete — for reference)
+
+``` text
+apps/api/app/api/pagination.py                      (new — PagedResponse[T])
+apps/api/app/api/v1/jobs.py                          (new — GET /jobs, GET /jobs/summary)
+apps/api/app/api/v1/records.py                       (new — GET /records/count)
+apps/api/app/api/v1/__init__.py                      (modified — routers wired in)
+apps/api/app/api/dependencies.py                     (modified — get_audit_service/get_project_service/get_configuration_service/get_job_service/get_record_service added)
+apps/api/app/domain/jobs.py                          (modified — JobStatusSummary added)
+apps/api/app/repositories/jobs.py                    (modified — list_for_user/count_by_status_for_user added)
+apps/api/app/repositories/records.py                 (modified — count_for_user added)
+apps/api/app/services/jobs.py                        (modified — list_for_user/summarize_for_user added)
+apps/api/app/services/records.py                     (modified — count_for_user added)
+apps/web/lib/api/dashboard.ts                        (new)
+apps/web/components/dashboard/StatCard.tsx            (new)
+apps/web/components/dashboard/RecentJobsTable.tsx     (new)
+apps/web/components/jobs/JobStatusBadge.tsx           (new)
+apps/web/app/(app)/dashboard/page.tsx                 (modified — real dashboard replacing the T070 placeholder)
+tests/unit/test_repositories.py                       (modified — 4 new tests)
+tests/unit/test_job_service.py                        (modified — 2 new tests)
+tests/unit/test_record_service.py                     (modified — 1 new test)
+tests/integration/test_dashboard_api.py                (new — 6 tests)
+apps/web/__tests__/components/DashboardPage.test.tsx  (new — 4 tests)
 ```
 
 ## T070 files (complete — for reference)

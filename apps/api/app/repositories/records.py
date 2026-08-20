@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any, Protocol
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
+from app.db.models import Project as ProjectRow
 from app.db.models import Record as RecordRow
 from app.db.models import RecordProvenance as RecordProvenanceRow
 from app.domain.record_search import RecordSearchFilters, RecordSort, RecordSortField
@@ -52,6 +53,8 @@ class RecordRepository(Protocol):
     ) -> Page[Record]: ...
 
     def add_provenance(self, provenance: RecordProvenance) -> RecordProvenance: ...
+
+    def count_for_user(self, user_id: int) -> int: ...
 
 
 class SqlAlchemyRecordRepository(SqlAlchemyRepository[RecordRow, Record]):
@@ -196,3 +199,17 @@ class SqlAlchemyRecordRepository(SqlAlchemyRepository[RecordRow, Record]):
             source_reference=row.source_reference,
             metadata=row.metadata_json,
         )
+
+    def count_for_user(self, user_id: int) -> int:
+        """T071 — the dashboard's "Records" card. A real `COUNT(*)`
+        joined through `projects`, the same cross-project-via-
+        ownership join `JobRepository.count_by_status_for_user()`
+        uses — never a client-side sum over a paginated `list_for_
+        project()` call (T071's own DO NOT rule)."""
+        total = self._session.scalar(
+            select(func.count())
+            .select_from(RecordRow)
+            .join(ProjectRow, ProjectRow.id == RecordRow.project_id)
+            .where(ProjectRow.user_id == user_id)
+        )
+        return total or 0

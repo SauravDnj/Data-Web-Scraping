@@ -24,6 +24,7 @@ from app.repositories.records import SqlAlchemyRecordRepository
 from app.repositories.schedules import SqlAlchemyScheduleRepository
 
 from tests.unit.factories import (
+    make_config,
     make_job,
     make_project,
     make_user,
@@ -173,6 +174,67 @@ def test_job_repository_create_run_and_list_runs(session_factory):
         assert [r.attempt for r in runs] == [1, 2]
 
 
+def test_job_repository_list_for_user_is_cross_project_but_scoped_to_the_user(
+    session_factory,
+):
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        repo = SqlAlchemyJobRepository(session)
+
+        project_a = make_project(session, owner.id, name="Project A")
+        config_a = make_config(session, project_a.id)
+        project_b = make_project(session, owner.id, name="Project B")
+        config_b = make_config(session, project_b.id)
+        job_in_a = repo.create(
+            Job(id=None, project_id=project_a.id, config_id=config_a.id)
+        )
+        job_in_b = repo.create(
+            Job(id=None, project_id=project_b.id, config_id=config_b.id)
+        )
+
+        stranger_project = make_project(session, stranger.id, name="Stranger Project")
+        stranger_config = make_config(session, stranger_project.id)
+        repo.create(
+            Job(id=None, project_id=stranger_project.id, config_id=stranger_config.id)
+        )
+
+        page = repo.list_for_user(owner.id)
+        assert {job.id for job in page.items} == {job_in_a.id, job_in_b.id}
+        assert page.total == 2
+
+
+def test_job_repository_list_for_user_filters_by_status(session_factory):
+    with session_scope(session_factory) as session:
+        _user, project, config = make_user_project_config(session)
+        repo = SqlAlchemyJobRepository(session)
+        job = repo.create(Job(id=None, project_id=project.id, config_id=config.id))
+        repo.update_status(job.id, JobStatus.QUEUED)
+
+        matching = repo.list_for_user(_user.id, status=JobStatus.QUEUED)
+        assert [j.id for j in matching.items] == [job.id]
+
+        not_matching = repo.list_for_user(_user.id, status=JobStatus.FAILED)
+        assert not_matching.items == []
+
+
+def test_job_repository_count_by_status_for_user(session_factory):
+    with session_scope(session_factory) as session:
+        _user, project, config = make_user_project_config(session)
+        repo = SqlAlchemyJobRepository(session)
+        first = repo.create(Job(id=None, project_id=project.id, config_id=config.id))
+        second = repo.create(Job(id=None, project_id=project.id, config_id=config.id))
+        repo.update_status(first.id, JobStatus.QUEUED)
+        repo.update_status(second.id, JobStatus.QUEUED)
+        repo.update_status(second.id, JobStatus.RUNNING)
+
+        counts = repo.count_by_status_for_user(_user.id)
+
+        assert counts[JobStatus.QUEUED] == 1
+        assert counts[JobStatus.RUNNING] == 1
+        assert JobStatus.FAILED not in counts
+
+
 # --- records -----------------------------------------------------------
 
 
@@ -228,6 +290,57 @@ def test_record_repository_add_provenance(session_factory):
         )
         assert provenance.id is not None
         assert provenance.record_id == record.id
+
+
+def test_record_repository_count_for_user_is_cross_project_but_scoped(
+    session_factory,
+):
+    with session_scope(session_factory) as session:
+        owner = make_user(session, email="owner@example.com")
+        stranger = make_user(session, email="stranger@example.com")
+        repo = SqlAlchemyRecordRepository(session)
+
+        project_a = make_project(session, owner.id, name="Project A")
+        config_a = make_config(session, project_a.id)
+        job_a = make_job(session, project_a.id, config_a.id)
+        project_b = make_project(session, owner.id, name="Project B")
+        config_b = make_config(session, project_b.id)
+        job_b = make_job(session, project_b.id, config_b.id)
+
+        for project, job, key in (
+            (project_a, job_a, "google_maps:places/a1"),
+            (project_a, job_a, "google_maps:places/a2"),
+            (project_b, job_b, "google_maps:places/b1"),
+        ):
+            repo.create(
+                Record(
+                    id=None,
+                    project_id=project.id,
+                    job_id=job.id,
+                    provider="google_maps",
+                    canonical_key=key,
+                    data={},
+                    collected_at=utc_now(),
+                )
+            )
+
+        stranger_project = make_project(session, stranger.id, name="Stranger Project")
+        stranger_config = make_config(session, stranger_project.id)
+        stranger_job = make_job(session, stranger_project.id, stranger_config.id)
+        repo.create(
+            Record(
+                id=None,
+                project_id=stranger_project.id,
+                job_id=stranger_job.id,
+                provider="google_maps",
+                canonical_key="google_maps:places/s1",
+                data={},
+                collected_at=utc_now(),
+            )
+        )
+
+        assert repo.count_for_user(owner.id) == 3
+        assert repo.count_for_user(stranger.id) == 1
 
 
 # --- exports ----------------------------------------------------------
