@@ -7,17 +7,39 @@ being changed.
 
 ## Active task
 
-T072 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
-T050-T055, T060-T065, T070, T071 complete; T027 PARTIAL — see
+T073 (T000-T002, T010, T011, T014, T015, T020-T026, T030-T045,
+T050-T055, T060-T065, T070, T071, T072 complete; T027 PARTIAL — see
 database/INDEX_REVIEW.md; T012/T013 prepared but blocked on user
 action; T013's local-testing gap mitigated via `fakeredis`). Phases 4
 (Provider), 5 (Data pipeline), and 6 (Worker) are all fully complete.
-Phase 7 (Frontend) has the app shell and dashboard.
+Phase 7 (Frontend) has the app shell, dashboard, and project
+management.
 
 ## Active files
 
 ``` text
-None yet — T072 has not started.
+None yet — T073 has not started.
+```
+
+## T072 files (complete — for reference)
+
+``` text
+apps/api/app/api/v1/projects.py                      (new — full /projects CRUD)
+apps/api/app/api/v1/__init__.py                       (modified — projects router wired in)
+apps/web/lib/api/projects.ts                          (new)
+apps/web/components/projects/ProjectForm.tsx          (new)
+apps/web/components/projects/ProjectStatusBadge.tsx   (new)
+apps/web/components/projects/ProjectDetailView.tsx    (new)
+apps/web/components/ui/ConfirmDialog.tsx              (new)
+apps/web/app/(app)/projects/page.tsx                  (modified — real list replacing T070 placeholder)
+apps/web/app/(app)/projects/new/page.tsx              (new)
+apps/web/app/(app)/projects/[projectId]/page.tsx      (new — thin use(params) wrapper)
+apps/web/vitest.setup.ts                              (modified — <dialog> polyfill)
+apps/web/package.json                                 (modified — typecheck now runs next typegen first)
+tests/integration/test_projects_api.py                (new — 8 tests)
+apps/web/__tests__/components/ProjectsPage.test.tsx        (new — 3 tests)
+apps/web/__tests__/components/NewProjectPage.test.tsx      (new — 1 test)
+apps/web/__tests__/components/ProjectDetailView.test.tsx   (new — 2 tests)
 ```
 
 ## T071 files (complete — for reference)

@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { AuthProvider } from "../../lib/auth/AuthContext";
 import DashboardPage from "../../app/(app)/dashboard/page";
 

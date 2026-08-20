@@ -2,55 +2,68 @@
 
 ## Active task
 
-T072 --- Project UI.
+T073 --- Configuration wizard.
 
 ## Previous task
 
-T071 --- Dashboard UI. COMPLETE — real dashboard
-(`app/(app)/dashboard/page.tsx`): 4 cards, recent-activity table,
-recent-failures table, loading/empty/error+retry, every number
-straight from a backend field (never client-derived, T071's own DO
-NOT rule). **Resolved the blocker flagged at the end of T070**: built
-the first backend HTTP routes beyond auth — `GET /jobs` (matches
-docs/05_API_DESIGN.md exactly), `GET /jobs/summary`,
-`GET /records/count` (both small, justified additions where the
-design doc was silent) — plus the FastAPI dependency-injection
-plumbing (`get_job_service`/`get_record_service`/etc. in
-`app/api/dependencies.py`) every future business route will reuse.
-Cross-project aggregation added real repository methods
-(`JobRepository.list_for_user()`/`count_by_status_for_user()`,
-`RecordRepository.count_for_user()`), all joining through `projects`
-since `Job`/`Record` have no `user_id` of their own. New
-`JobStatusSummary` domain type documents a real design decision (which
-`JobStatus` values count as "active"/"completed"/"failed" for the 3
-dashboard cards — `CANCELLED` counts toward none of them). Hit the
-same `react-hooks/set-state-in-effect` rule as T070 but needed a
-different fix — worth reading if any future data-fetch-on-mount
-component trips it again. 17 new tests (7 backend, 6 HTTP, 4
-frontend). Verified against real seeded data via scratch
-`uvicorn`+SQLite (browser extension still unavailable in this
-environment). See `docs/18_COMPLETED_WORK.md`.
+T072 --- Project UI. COMPLETE — full project list/create/edit/archive
+flow (`app/(app)/projects/{page,new/page,[projectId]/page}.tsx`),
+backed by the full `/projects` CRUD surface
+(`app/api/v1/projects.py`) built on the already-tested
+`ProjectService` (T033) and T071's `get_project_service` dependency
+(no new plumbing needed). `DELETE` maps to `archive_project()` — a
+deliberate reconciliation with T033's original archive-only design,
+not a new hard-delete path. Found and fixed a real pre-existing gap:
+`ProjectService.update_project()`'s bare `ValueError` for an empty
+name was never mapped by T039's error handlers and would have 500'd
+over HTTP — fixed with Pydantic validators at the API boundary rather
+than touching the already-tested service. **Found and fixed a real,
+previously-undetected CI bug**: `npm run typecheck` (bare `tsc
+--noEmit`) fails on a clean checkout because `.next/` (and its
+generated `PageProps`/`LayoutProps` types) is gitignored and CI never
+runs a build step first — this predates T072 (T070's
+`LayoutProps<'/'>` was already affected) and is now fixed by making
+`typecheck` run `next typegen` first, self-healing for CI and any
+fresh clone. Split `app/(app)/projects/[projectId]/page.tsx` into a
+thin `use(params)` wrapper plus a new, directly-testable
+`components/projects/ProjectDetailView.tsx` after discovering `use()`
+on a plain resolved promise doesn't reliably settle under this
+project's test stack (vitest+jsdom+React 19) — a test-environment
+limitation, not a real bug, confirmed via an isolated repro. Also
+fixed a real jsdom gap (`<dialog>.showModal()`/`.close()` unimplemented)
+centrally in `vitest.setup.ts` for the new reusable
+`components/ui/ConfirmDialog.tsx`. 14 new tests. Verified end-to-end
+against a real seeded backend (create→list→detail→update→archive via
+curl) and a real `next dev` server for all new routes (Chrome
+extension still unavailable in this environment). See
+`docs/18_COMPLETED_WORK.md`.
 
 ## Goal
 
-Build project management (read `docs/T072_PROMPT.md` before assuming
-scope) — a project list, optional search/filter, a create-project
-form, edit, archive (with a confirmation step — it's a destructive/
-state-changing action), a project detail page, validation feedback,
-loading/empty/error states (reuse T070/T071's `EmptyState`/
-`ErrorState`), and connect it all through a typed API client. Literal
-acceptance criterion: a created project appears immediately in the
-list after a successful API response.
+Build the multi-step collection configuration wizard (read
+`docs/T073_PROMPT.md` before assuming scope) — 7 steps: project
+basics, provider, search/query/location, fields, limits, schedule
+option, review+confirm. Client-side validation for immediate feedback
+but server-side stays authoritative (`GoogleMapsConfigValidator`,
+T041, already exists and is exactly what the server-side check should
+call); provider-specific help text; usage/limit warnings; an accurate
+review summary before submission; save as a versioned configuration
+(`ConfigurationService.create_version()`, T034, already exists and
+already enforces the single-active-version invariant); never keep a
+provider secret in browser state longer than necessary (there
+shouldn't be one in this flow at all — Google's API key is
+server-side only, per T041's `GoogleMapsConfigValidator` design —
+confirm the wizard never asks the user for one). Literal acceptance
+criteria: an invalid configuration cannot be activated; the review
+screen accurately represents what gets submitted.
 
-**Same class of blocker as T071, expected this time**: `ProjectService`
-(T033) exists and is fully tested, but **no `/projects` HTTP route
-exists yet** — `docs/05_API_DESIGN.md` lists the full CRUD surface
-(`GET/POST /projects`, `GET/PATCH/DELETE /projects/{id}}`, archive is
-`ProjectService.archive_project()` — check whether that's exposed via
-`PATCH .../archive` or folded into the generic `PATCH`). Build this
-now the same way T071 built `app/api/v1/jobs.py`/`records.py`:
-`get_project_service` already exists in `app/api/dependencies.py`
-(built at T071) — reuse it directly, no new plumbing needed there.
+**Same class of blocker as T071/T072, now the expected pattern**: no
+`/configs` HTTP route exists yet — `docs/05_API_DESIGN.md` lists
+`GET/POST /projects/{project_id}/configs`, `GET/PATCH /configs/{id}`,
+`POST /configs/{id}/validate`. `ConfigurationService` (T034) and
+`GoogleMapsConfigValidator` (T041) are both already fully tested and
+ready to wire up; `get_configuration_service` already exists in
+`app/api/dependencies.py` (built at T071) — reuse it directly.
 
 ## Not yet in scope
 

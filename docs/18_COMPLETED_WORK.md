@@ -1790,3 +1790,96 @@ list after a successful API response). Will likely need a new
 `/projects` HTTP route first, same pattern as T071 —
 `get_project_service` already exists in `app/api/dependencies.py`
 (built at T071), reuse it directly.
+
+### T072 --- Project UI
+
+Status: COMPLETE
+
+Evidence:
+
+-   Full project flow: list (`app/(app)/projects/page.tsx`), create
+    (`app/(app)/projects/new/page.tsx`), detail/edit/archive
+    (`app/(app)/projects/[projectId]/page.tsx`). `app/api/v1/
+    projects.py`: the full `/projects` CRUD surface
+    `docs/05_API_DESIGN.md` lists, built directly on the already-
+    tested `ProjectService` (T033) via `get_project_service` (T071,
+    reused as-is — no new dependency-injection plumbing needed).
+-   **`DELETE` maps to `archive_project()`, a deliberate
+    reconciliation, not a new capability**: `ProjectService` has been
+    archive-only by design since T033 (no row-deletion path exists
+    anywhere in this codebase for a project). Documented inline in
+    `app/api/v1/projects.py` rather than inventing a real hard-delete
+    just to satisfy the design doc's literal verb.
+-   **Found and fixed a real bug this task would have otherwise
+    exposed via HTTP for the first time**: `ProjectService.
+    update_project()`'s bare `ValueError` for an empty name was never
+    mapped by T039's centralized error handlers, so it would have
+    fallen through to a generic 500. Fixed with Pydantic
+    `field_validator`s on the request models at the API boundary
+    (returns a proper 422) rather than touching the already-tested
+    service — the service's own `ValueError` path stays exercised
+    directly by its existing unit tests.
+-   **Found and fixed a second real bug — a genuinely broken CI step,
+    not just a missing test**: `npm run typecheck` (bare `tsc
+    --noEmit`) fails on any clean checkout, because `.next/`'s
+    generated `PageProps`/`LayoutProps` types are gitignored and CI's
+    `frontend` job never runs a build step before typechecking.
+    Confirmed by deleting `.next` locally and reproducing the exact
+    failure — including on `app/layout.tsx`'s `LayoutProps<'/'>` from
+    T070, meaning this predates T072 and was already latent in CI.
+    Fixed by changing the `typecheck` script itself to `next typegen
+    && tsc --noEmit` — self-healing for CI and any fresh clone, not
+    just a documented manual step.
+-   **A real, non-obvious test-environment limitation, resolved
+    architecturally rather than worked around**: `use()` on a plain
+    `Promise.resolve(...)` inside `<Suspense>` does not reliably
+    settle under this project's test stack (vitest 4 + jsdom 29 +
+    React 19), confirmed with a minimal isolated repro unrelated to
+    this task's own code. Split `app/(app)/projects/[projectId]/
+    page.tsx` into a thin `use(params)` wrapper around a new,
+    directly-testable `components/projects/ProjectDetailView.tsx`
+    (takes a plain `projectId: number`, holds all the real logic) —
+    arguably better architecture regardless, matching how
+    `LoginForm`/`ProjectForm` are already split from their thin page
+    wrappers.
+-   **A second, smaller test-environment gap, fixed centrally**: jsdom
+    implements `<dialog>`'s `open` attribute reflection but not
+    `showModal()`/`close()` — fixed once in `vitest.setup.ts` (a
+    minimal polyfill) so any future `<dialog>`-based component is
+    testable, not just this task's own `components/ui/
+    ConfirmDialog.tsx` (a reusable native-`<dialog>` confirm/cancel
+    primitive, used here for "confirm before archiving," item 9).
+-   14 new tests: 8 backend HTTP
+    (`tests/integration/test_projects_api.py` — auth required,
+    create-then-appears-in-list [T072's literal acceptance criterion],
+    empty-name validation on create and update, cross-user list
+    scoping, detail/404/403, archive-not-hard-delete), 6 frontend
+    (`ProjectsPage.test.tsx` — empty/populated/error states;
+    `NewProjectPage.test.tsx` — create-then-redirect;
+    `ProjectDetailView.test.tsx` — loads detail, archive requires
+    confirmation before the request fires).
+-   Verified locally: backend 462 passed, 1 skipped (T012-gated),
+    ruff clean across all three Python trees, mypy clean (84 files in
+    `apps/api`; 11 files via the separate `workers/pyproject.toml`
+    invocation); frontend `npm run lint`/`typecheck`/`test` (24
+    passed, up from 18) all clean, `npm run build` succeeds and
+    statically generates 11 routes including the new dynamic
+    `/projects/[projectId]`. Verified end-to-end against a real seeded
+    backend (full create→list→detail→update→archive flow via curl,
+    matching the frontend's exact request/response shapes) and a real
+    `next dev` server for every new route (200s, no server errors) —
+    Chrome extension still unavailable in this environment; the
+    rendered UI itself was not visually confirmed in a browser.
+
+Next: T073 --- Configuration wizard (7 steps: project basics, provider,
+search/query/location, fields, limits, schedule option, review+confirm;
+client-side validation for immediate feedback, server-side stays
+authoritative; provider-specific help text; usage/limit warnings; an
+accurate review summary; save as a versioned configuration; never keep
+a provider secret in browser state longer than necessary). Invalid
+configuration cannot be activated; review screen must accurately
+represent submitted data. Will likely need a new `/configs` HTTP route
+first, same pattern as T071/T072 — `ConfigurationService` (T034) and
+`GoogleMapsConfigValidator` (T041) both already exist and are fully
+tested; `get_configuration_service` already exists in
+`app/api/dependencies.py` (built at T071), reuse it directly.

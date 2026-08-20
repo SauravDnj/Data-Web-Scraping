@@ -149,8 +149,13 @@
         auth; new cross-project repository aggregation + FastAPI
         dependency plumbing reused by future routes — see
         docs/16_MEMORY.md)
--   [ ] T072--T078 frontend (T072 will likely need a new `/projects`
-        HTTP route first, same pattern as T071 — see
+-   [x] T072 Project UI (full list/create/edit/archive flow, backed
+        by the new `/projects` CRUD surface built on the already-
+        tested `ProjectService`; found/fixed a real pre-existing CI
+        typecheck bug affecting any clean checkout — see
+        docs/16_MEMORY.md)
+-   [ ] T073--T078 frontend (T073 will likely need a new `/configs`
+        HTTP route first, same pattern as T071/T072 — see
         docs/17_CURRENT_WORK.md)
 -   [ ] T080--T085 operations
 -   [ ] T090--T094 quality

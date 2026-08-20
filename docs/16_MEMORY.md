@@ -69,16 +69,17 @@ Phase 1 (Local foundation).
 
 ## Current task
 
-T072 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
+T073 --- next up. (T000-T002, T010, T011, T014, T015, T020-T026 fully
 complete, T027 PARTIAL (see database/INDEX_REVIEW.md), T030-T045,
-T050-T055, T060-T065, T070, and T071 complete — Phase 4 Provider,
-Phase 5 Data pipeline, and Phase 6 Worker are all fully done; Phase 7
-Frontend has the app shell and dashboard. First backend HTTP routes
-beyond auth now exist: `GET /jobs`, `GET /jobs/summary`,
-`GET /records/count` (T071). T012/T013 prepared but NOT verified —
-see below. See the dated sections further down for detail; this
-header is not updated inline each time, check docs/17_CURRENT_WORK.md
-for the authoritative up-to-the-minute status.)
+T050-T055, T060-T065, T070, T071, and T072 complete — Phase 4
+Provider, Phase 5 Data pipeline, and Phase 6 Worker are all fully
+done; Phase 7 Frontend has the app shell, dashboard, and full project
+management. Backend HTTP routes beyond auth now exist for jobs
+(list+summary), records (count), and projects (full CRUD, T072).
+T012/T013 prepared but NOT verified — see below. See the dated
+sections further down for detail; this header is not updated inline
+each time, check docs/17_CURRENT_WORK.md for the authoritative
+up-to-the-minute status.)
 
 ## T027 — the real hard stop
 
@@ -2097,6 +2098,112 @@ clean across all three Python trees, mypy clean (83 files in
 invocation). Verified locally (frontend): `npm run
 lint`/`typecheck`/`test` (18 passed, up from 14) all clean, `npm run
 build` succeeds.
+
+## Project UI (T072) — current task now T073
+
+Built the full project management flow: list (`app/(app)/projects/
+page.tsx`), create (`app/(app)/projects/new/page.tsx`), detail/edit/
+archive (`app/(app)/projects/[projectId]/page.tsx`). Backend:
+`app/api/v1/projects.py` — the full CRUD surface
+`docs/05_API_DESIGN.md` lists (`GET/POST /projects`,
+`GET/PATCH/DELETE /projects/{id}`), built directly on `ProjectService`
+(T033, already fully unit-tested) via `get_project_service`
+(built at T071, reused as-is — no new dependency plumbing needed).
+
+**`DELETE` maps to `archive_project()`, a deliberate reconciliation
+with a design decision predating this task**: `ProjectService` has
+been archive-only since T033 ("Archive rather than destructively
+delete — no delete method exists on this service or on
+`ProjectRepository`"). Rather than inventing a real row-deletion path
+just to satisfy the design doc's literal `DELETE` verb, `DELETE
+/projects/{id}` calls the existing `archive_project()` — a soft
+delete, matching what the service has always actually done. Documented
+inline in `app/api/v1/projects.py`'s module docstring.
+
+**A real bug this task would have otherwise exposed via HTTP for the
+first time**: `ProjectService.update_project()` raises a bare
+`ValueError("Project name must not be empty.")` for an empty name —
+never mapped by T039's `register_service_error_handlers` (only
+`NotFoundError`/`PermissionDeniedError`/`InvalidStateError` are), so
+it would have fallen through to the generic 500 handler. Fixed at the
+API boundary instead of touching the already-tested service: Pydantic
+`field_validator`s on `CreateProjectRequest`/`UpdateProjectRequest`
+reject an empty/whitespace-only name before it ever reaches the
+service, returning FastAPI's standard 422 (already handled) — the
+service's own `ValueError` path is now unreachable from HTTP but stays
+exercised directly by `tests/unit/test_project_service.py`'s existing
+tests.
+
+**A second real, latent bug found and fixed — a genuinely broken CI
+step, not just a missing test**: `PageProps<'/projects/[projectId]'>`
+(the typed dynamic-route-params helper used in
+`app/(app)/projects/[projectId]/page.tsx`) only exists after Next.js
+generates route types (`next dev`/`next build`/`next typegen`) — and
+since `.next/` is gitignored and CI's `frontend` job
+(`.github/workflows/ci.yml`) runs `npm run typecheck`
+(bare `tsc --noEmit`) immediately after `npm ci` with no prior build
+step, **CI's typecheck would fail on a completely clean checkout** —
+confirmed by deleting `.next` locally and reproducing the exact
+failure, including on `app/layout.tsx`'s pre-existing `LayoutProps<'/'>`
+usage from T070 (meaning this bug predates T072 and was already
+latent in CI, just never triggered locally since a local `.next`
+always happened to exist from a prior `dev`/`build` run). Fixed by
+changing the `typecheck` script itself to `next typegen && tsc
+--noEmit` — self-healing for both CI and any future clean checkout,
+not just documented as a manual pre-step.
+
+**A real, non-obvious test-environment gap, found via `use()`+
+`<dialog>`, fixed for reuse rather than worked around locally**: (1)
+`use()` on a plain `Promise.resolve(...)` inside a `<Suspense>`
+boundary does not reliably resolve under this project's test stack
+(vitest 4 + jsdom 29 + React 19 + `@testing-library/react` 16),
+confirmed with a minimal isolated repro completely unrelated to this
+task's own code — real Next.js pages get the framework's own Suspense
+machinery for free, so this only affects direct component-level unit
+tests of a page using `use(props.params)`. Resolved architecturally,
+not by fighting the test environment: `app/(app)/projects/
+[projectId]/page.tsx` is now a thin `use(params)` wrapper around a new
+`components/projects/ProjectDetailView.tsx`, which takes a plain
+`projectId: number` prop and holds all the actual logic — trivially
+testable with no Suspense involved, and arguably better architecture
+regardless (Next.js routing plumbing separated from UI logic, same
+spirit as `LoginForm`/`ProjectForm` already being split from their
+thin page wrappers). (2) jsdom implements `<dialog>`'s `open`
+attribute reflection but not the imperative `showModal()`/`close()`
+methods every real browser has — fixed centrally in
+`vitest.setup.ts` with a minimal polyfill (`showModal()` sets the
+`open` attribute, `close()` clears it and fires a `close` event) so
+any future component using `<dialog>` (not just
+`components/ui/ConfirmDialog.tsx`, built this task for the archive
+confirmation, item 9) is testable without rediscovering this gap.
+
+**Reusable primitive**: `components/ui/ConfirmDialog.tsx` — a native
+`<dialog>`-based confirm/cancel modal (built-in focus trap, ESC-to-
+close, `::backdrop`), used here for "confirm before archiving" and
+intended for reuse by any future destructive/state-changing action
+(cancel a job, delete an export, etc.).
+
+14 new tests: 8 backend HTTP (`tests/integration/test_projects_api.py`
+— auth required, create-then-appears-in-list [T072's literal
+acceptance criterion], empty-name validation, cross-user list scoping,
+detail/404/403, update, empty-name validation on update, archive-not-
+hard-delete), 6 frontend (`ProjectsPage.test.tsx` — empty/populated/
+error states; `NewProjectPage.test.tsx` — create-then-redirect;
+`ProjectDetailView.test.tsx` — loads project detail, archive requires
+confirmation before the request fires).
+
+Verified locally: backend 462 passed, 1 skipped (T012-gated), ruff
+clean across all three Python trees, mypy clean (84 files in
+`apps/api`; 11 files via the separate `workers/pyproject.toml`
+invocation); frontend `npm run lint`/`typecheck`/`test` (24 passed, up
+from 18) all clean, `npm run build` succeeds and statically generates
+11 routes including the new dynamic `/projects/[projectId]`. Verified
+against a real seeded backend end-to-end (create → list → detail →
+update → archive, all via curl matching the frontend's exact request/
+response shapes) — Chrome extension still unavailable in this
+environment; curled `/projects`, `/projects/new`, `/projects/1`
+against a real `next dev` server (200s, no server errors) but did NOT
+visually confirm the rendered UI in a browser.
 
 ## T012 (MySQL) / T013 (Redis) — blocked on user action
 
